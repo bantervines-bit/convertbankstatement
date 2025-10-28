@@ -10,19 +10,3 @@ export default defineConfig({
     outDir: 'dist'
   }
 })
-```
-
-4. Click **Commit changes** → **Commit changes**
-
-### 3.3 Create .gitignore
-
-1. Click **Add file** → **Create new file**
-2. File name: `.gitignore`
-3. Paste this:
-```
-node_modules/
-dist/
-.env
-.env.local
-.DS_Store
-*.log
