@@ -1,29 +1,150 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Upload, Lock, Zap, CheckCircle, Menu, X, FileText, LogOut, User, CreditCard, History as HistoryIcon, Gift, Download, Trash2, Copy, Check } from 'lucide-react';
 
 const App = () => {
   const [currentPage, setCurrentPage] = useState('landing');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [pricingPeriod, setPricingPeriod] = useState('monthly');
-  const [userCredits, setUserCredits] = useState(25);
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [isDragging, setIsDragging] = useState(false);
   const [isConverting, setIsConverting] = useState(false);
-  const [referralCode] = useState('REF' + Math.random().toString(36).substr(2, 9).toUpperCase());
   const [copied, setCopied] = useState(false);
-  const [convertHistory, setConvertHistory] = useState([
-    { id: 1, fileName: 'hdfc_statement_jan.pdf', date: '2025-10-25', credits: 3, status: 'completed', pages: 3 },
-    { id: 2, fileName: 'sbi_statement_feb.pdf', date: '2025-10-24', credits: 5, status: 'completed', pages: 5 },
-    { id: 3, fileName: 'icici_statement_mar.pdf', date: '2025-10-23', credits: 2, status: 'completed', pages: 2 },
-  ]);
-  const [creditUsage, setcreditUsage] = useState([
-    { id: 1, fileName: 'hdfc_statement_jan.pdf', date: '2025-10-25', creditsUsed: 3, type: 'conversion' },
-    { id: 2, fileName: 'sbi_statement_feb.pdf', date: '2025-10-24', creditsUsed: 5, type: 'conversion' },
-    { id: 3, fileName: 'Referral Bonus', date: '2025-10-23', creditsUsed: -15, type: 'earned' },
-    { id: 4, fileName: 'icici_statement_mar.pdf', date: '2025-10-22', creditsUsed: 2, type: 'conversion' },
-    { id: 5, fileName: 'Monthly Bonus', date: '2025-10-20', creditsUsed: -5, type: 'earned' },
-  ]);
+  
+  // Login/Signup states
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [signupName, setSignupName] = useState('');
+  const [signupEmail, setSignupEmail] = useState('');
+  const [signupPassword, setSignupPassword] = useState('');
+  const [signupConfirmPassword, setSignupConfirmPassword] = useState('');
+  const [authError, setAuthError] = useState('');
+  const [authSuccess, setAuthSuccess] = useState('');
+
+  // Load user session on mount
+  useEffect(() => {
+    const savedUser = localStorage.getItem('currentUser');
+    if (savedUser) {
+      const user = JSON.parse(savedUser);
+      setCurrentUser(user);
+      setIsLoggedIn(true);
+    }
+  }, []);
+
+  // Save user session
+  const saveUserSession = (user) => {
+    localStorage.setItem('currentUser', JSON.stringify(user));
+    setCurrentUser(user);
+    setIsLoggedIn(true);
+  };
+
+  // Handle Login
+  const handleLogin = (e) => {
+    e.preventDefault();
+    setAuthError('');
+    
+    if (!loginEmail || !loginPassword) {
+      setAuthError('Please fill in all fields');
+      return;
+    }
+
+    // Get users from storage
+    const users = JSON.parse(localStorage.getItem('users') || '[]');
+    const user = users.find(u => u.email === loginEmail);
+
+    if (!user) {
+      setAuthError('User not found. Please sign up first.');
+      return;
+    }
+
+    if (user.password !== loginPassword) {
+      setAuthError('Incorrect password');
+      return;
+    }
+
+    saveUserSession(user);
+    setCurrentPage('dashboard');
+    setLoginEmail('');
+    setLoginPassword('');
+  };
+
+  // Handle Signup
+  const handleSignup = (e) => {
+    e.preventDefault();
+    setAuthError('');
+    setAuthSuccess('');
+
+    // Validation
+    if (!signupName || !signupEmail || !signupPassword || !signupConfirmPassword) {
+      setAuthError('Please fill in all fields');
+      return;
+    }
+
+    if (signupPassword !== signupConfirmPassword) {
+      setAuthError('Passwords do not match');
+      return;
+    }
+
+    if (signupPassword.length < 6) {
+      setAuthError('Password must be at least 6 characters');
+      return;
+    }
+
+    // Check if email already exists
+    const users = JSON.parse(localStorage.getItem('users') || '[]');
+    if (users.find(u => u.email === signupEmail)) {
+      setAuthError('Email already registered. Please login.');
+      return;
+    }
+
+    // Create new user
+    const newUser = {
+      id: Date.now(),
+      name: signupName,
+      email: signupEmail,
+      password: signupPassword,
+      credits: 25,
+      referralCode: 'REF' + Math.random().toString(36).substr(2, 9).toUpperCase(),
+      joinDate: new Date().toISOString(),
+      convertHistory: [],
+      creditUsage: [
+        { id: 1, fileName: 'Welcome Bonus', date: new Date().toISOString().split('T')[0], creditsUsed: -25, type: 'earned' }
+      ]
+    };
+
+    users.push(newUser);
+    localStorage.setItem('users', JSON.stringify(users));
+    
+    setAuthSuccess('Account created successfully! Logging you in...');
+    setTimeout(() => {
+      saveUserSession(newUser);
+      setCurrentPage('dashboard');
+      setSignupName('');
+      setSignupEmail('');
+      setSignupPassword('');
+      setSignupConfirmPassword('');
+    }, 1500);
+  };
+
+  // Handle Logout
+  const handleLogout = () => {
+    localStorage.removeItem('currentUser');
+    setCurrentUser(null);
+    setIsLoggedIn(false);
+    setCurrentPage('landing');
+  };
+
+  // Update user data in storage
+  const updateUserData = (updates) => {
+    const users = JSON.parse(localStorage.getItem('users') || '[]');
+    const userIndex = users.findIndex(u => u.id === currentUser.id);
+    if (userIndex !== -1) {
+      users[userIndex] = { ...users[userIndex], ...updates };
+      localStorage.setItem('users', JSON.stringify(users));
+      saveUserSession(users[userIndex]);
+    }
+  };
 
   const Navigation = () => (
     <nav className="bg-white shadow-sm sticky top-0 z-50">
@@ -41,18 +162,20 @@ const App = () => {
                 <button onClick={() => setCurrentPage('dashboard')} className="text-gray-700 hover:text-blue-600 transition">Dashboard</button>
                 <button onClick={() => setCurrentPage('credits')} className="text-gray-700 hover:text-blue-600 transition flex items-center bg-blue-50 px-3 py-1 rounded-full">
                   <CreditCard className="h-4 w-4 mr-1 text-blue-600" />
-                  <span className="font-semibold text-blue-600">{userCredits}</span>
+                  <span className="font-semibold text-blue-600">{currentUser?.credits || 0}</span>
                 </button>
                 <button onClick={() => setCurrentPage('history')} className="text-gray-700 hover:text-blue-600 transition">History</button>
-                <button onClick={() => setCurrentPage('profile')} className="text-gray-700 hover:text-blue-600 transition">Profile</button>
-                <button onClick={() => { setIsLoggedIn(false); setCurrentPage('landing'); }} className="text-gray-700 hover:text-red-600 transition">
+                <button onClick={() => setCurrentPage('profile')} className="text-gray-700 hover:text-blue-600 transition">
+                  <User className="h-5 w-5" />
+                </button>
+                <button onClick={handleLogout} className="text-gray-700 hover:text-red-600 transition">
                   <LogOut className="h-5 w-5" />
                 </button>
               </>
             ) : (
               <>
                 <button onClick={() => setCurrentPage('login')} className="text-gray-700 hover:text-blue-600 transition">Login</button>
-                <button onClick={() => { setIsLoggedIn(true); setUserCredits(25); setCurrentPage('dashboard'); }} className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition shadow-md">
+                <button onClick={() => setCurrentPage('signup')} className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition shadow-md">
                   Sign Up
                 </button>
               </>
@@ -72,15 +195,15 @@ const App = () => {
             {isLoggedIn ? (
               <>
                 <button onClick={() => { setCurrentPage('dashboard'); setMobileMenuOpen(false); }} className="block w-full text-left text-gray-700">Dashboard</button>
-                <button onClick={() => { setCurrentPage('credits'); setMobileMenuOpen(false); }} className="block w-full text-left text-gray-700">Credits ({userCredits})</button>
+                <button onClick={() => { setCurrentPage('credits'); setMobileMenuOpen(false); }} className="block w-full text-left text-gray-700">Credits ({currentUser?.credits || 0})</button>
                 <button onClick={() => { setCurrentPage('history'); setMobileMenuOpen(false); }} className="block w-full text-left text-gray-700">History</button>
                 <button onClick={() => { setCurrentPage('profile'); setMobileMenuOpen(false); }} className="block w-full text-left text-gray-700">Profile</button>
-                <button onClick={() => { setIsLoggedIn(false); setCurrentPage('landing'); setMobileMenuOpen(false); }} className="block w-full text-left text-red-600">Logout</button>
+                <button onClick={() => { handleLogout(); setMobileMenuOpen(false); }} className="block w-full text-left text-red-600">Logout</button>
               </>
             ) : (
               <>
                 <button onClick={() => { setCurrentPage('login'); setMobileMenuOpen(false); }} className="block w-full text-left text-gray-700">Login</button>
-                <button onClick={() => { setIsLoggedIn(true); setUserCredits(25); setCurrentPage('dashboard'); setMobileMenuOpen(false); }} className="block w-full text-left bg-blue-600 text-white px-4 py-2 rounded-lg">Sign Up</button>
+                <button onClick={() => { setCurrentPage('signup'); setMobileMenuOpen(false); }} className="block w-full text-left bg-blue-600 text-white px-4 py-2 rounded-lg">Sign Up</button>
               </>
             )}
           </div>
@@ -142,11 +265,11 @@ const App = () => {
           <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
             Upload your PDF bank statements and get clean, editable Excel files in seconds — fast, secure, and precise.
           </p>
-          <button onClick={() => isLoggedIn ? setCurrentPage('dashboard') : (setIsLoggedIn(true), setUserCredits(25), setCurrentPage('dashboard'))} className="bg-blue-600 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-blue-700 transition shadow-lg hover:shadow-xl inline-flex items-center">
+          <button onClick={() => isLoggedIn ? setCurrentPage('dashboard') : setCurrentPage('signup')} className="bg-blue-600 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-blue-700 transition shadow-lg hover:shadow-xl inline-flex items-center">
             <Upload className="mr-2 h-5 w-5" />
-            Upload PDF
+            {isLoggedIn ? 'Upload PDF' : 'Get Started Free'}
           </button>
-          <p className="text-sm text-gray-500 mt-4">Signed users get 5 free pages to convert everyday</p>
+          <p className="text-sm text-gray-500 mt-4">Signed users get 25 free credits to start</p>
         </div>
 
         <div className="grid md:grid-cols-3 gap-8 py-16">
@@ -199,7 +322,7 @@ const App = () => {
           <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
             <div className="bg-white p-8 rounded-xl shadow-md border-2 border-gray-200">
               <h3 className="text-2xl font-bold mb-4">Free</h3>
-              <p className="text-gray-600 mb-4">Convert up to 2 PDFs per day</p>
+              <p className="text-gray-600 mb-4">Perfect for trying out</p>
               <p className="text-3xl font-bold text-blue-600 mb-4">$0</p>
               <ul className="text-sm text-gray-600 space-y-2">
                 <li>✓ 2 conversions/day</li>
@@ -209,17 +332,17 @@ const App = () => {
             <div className="bg-white p-8 rounded-xl shadow-md border-2 border-blue-600 transform scale-105">
               <div className="bg-blue-600 text-white text-xs px-3 py-1 rounded-full inline-block mb-2">POPULAR</div>
               <h3 className="text-2xl font-bold mb-4">Signed Up</h3>
-              <p className="text-gray-600 mb-4">Convert up to 5 PDFs per day</p>
+              <p className="text-gray-600 mb-4">Get 25 free credits</p>
               <p className="text-3xl font-bold text-blue-600 mb-4">Free</p>
               <ul className="text-sm text-gray-600 space-y-2">
-                <li>✓ 5 conversions/day</li>
-                <li>✓ Priority support</li>
+                <li>✓ 25 credits on signup</li>
+                <li>✓ 5 daily bonus credits</li>
                 <li>✓ Referral rewards</li>
               </ul>
             </div>
             <div className="bg-gradient-to-br from-blue-600 to-blue-700 p-8 rounded-xl shadow-lg text-white">
               <h3 className="text-2xl font-bold mb-4">Premium</h3>
-              <p className="mb-4">Unlimited conversions & credits</p>
+              <p className="mb-4">Unlimited conversions</p>
               <p className="text-3xl font-bold mb-4">From $14/mo</p>
               <button onClick={() => setCurrentPage('pricing')} className="bg-white text-blue-600 px-6 py-2 rounded-lg font-semibold hover:bg-gray-100 transition w-full">
                 View Plans
@@ -229,6 +352,147 @@ const App = () => {
         </div>
       </div>
       <Footer />
+    </div>
+  );
+
+  const LoginPage = () => (
+    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white flex items-center justify-center px-4 py-12">
+      <div className="bg-white rounded-xl shadow-lg p-8 max-w-md w-full">
+        <div className="text-center mb-8">
+          <FileText className="h-12 w-12 text-blue-600 mx-auto mb-4" />
+          <h2 className="text-3xl font-bold text-gray-900 mb-2">Welcome Back</h2>
+          <p className="text-gray-600">Sign in to your account</p>
+        </div>
+
+        {authError && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
+            {authError}
+          </div>
+        )}
+
+        <form onSubmit={handleLogin} className="space-y-4">
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Email</label>
+            <input
+              type="email"
+              value={loginEmail}
+              onChange={(e) => setLoginEmail(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent"
+              placeholder="you@example.com"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Password</label>
+            <input
+              type="password"
+              value={loginPassword}
+              onChange={(e) => setLoginPassword(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent"
+              placeholder="••••••••"
+              required
+            />
+          </div>
+          <button
+            type="submit"
+            className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition font-semibold"
+          >
+            Sign In
+          </button>
+        </form>
+
+        <p className="text-center text-gray-600 mt-6">
+          Don't have an account?{' '}
+          <button onClick={() => { setCurrentPage('signup'); setAuthError(''); }} className="text-blue-600 font-semibold hover:underline">
+            Sign up
+          </button>
+        </p>
+      </div>
+    </div>
+  );
+
+  const SignupPage = () => (
+    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white flex items-center justify-center px-4 py-12">
+      <div className="bg-white rounded-xl shadow-lg p-8 max-w-md w-full">
+        <div className="text-center mb-8">
+          <FileText className="h-12 w-12 text-blue-600 mx-auto mb-4" />
+          <h2 className="text-3xl font-bold text-gray-900 mb-2">Create Account</h2>
+          <p className="text-gray-600">Get 25 free credits to start!</p>
+        </div>
+
+        {authError && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
+            {authError}
+          </div>
+        )}
+
+        {authSuccess && (
+          <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg mb-4">
+            {authSuccess}
+          </div>
+        )}
+
+        <form onSubmit={handleSignup} className="space-y-4">
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Full Name</label>
+            <input
+              type="text"
+              value={signupName}
+              onChange={(e) => setSignupName(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent"
+              placeholder="John Doe"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Email</label>
+            <input
+              type="email"
+              value={signupEmail}
+              onChange={(e) => setSignupEmail(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent"
+              placeholder="you@example.com"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Password</label>
+            <input
+              type="password"
+              value={signupPassword}
+              onChange={(e) => setSignupPassword(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent"
+              placeholder="••••••••"
+              required
+              minLength="6"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Confirm Password</label>
+            <input
+              type="password"
+              value={signupConfirmPassword}
+              onChange={(e) => setSignupConfirmPassword(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent"
+              placeholder="••••••••"
+              required
+            />
+          </div>
+          <button
+            type="submit"
+            className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition font-semibold"
+          >
+            Create Account
+          </button>
+        </form>
+
+        <p className="text-center text-gray-600 mt-6">
+          Already have an account?{' '}
+          <button onClick={() => { setCurrentPage('login'); setAuthError(''); setAuthSuccess(''); }} className="text-blue-600 font-semibold hover:underline">
+            Sign in
+          </button>
+        </p>
+      </div>
     </div>
   );
 
@@ -273,8 +537,23 @@ const App = () => {
           pages: file.pages
         }));
         
-        setConvertHistory([...newHistory, ...convertHistory]);
-        setUserCredits(prev => prev - totalPages);
+        const updatedHistory = [...newHistory, ...(currentUser?.convertHistory || [])];
+        const newCreditsUsage = uploadedFiles.map(file => ({
+          id: Date.now() + Math.random(),
+          fileName: file.name,
+          date: new Date().toISOString().split('T')[0],
+          creditsUsed: file.pages,
+          type: 'conversion'
+        }));
+        
+        const updatedCreditUsage = [...newCreditsUsage, ...(currentUser?.creditUsage || [])];
+        
+        updateUserData({
+          credits: currentUser.credits - totalPages,
+          convertHistory: updatedHistory,
+          creditUsage: updatedCreditUsage
+        });
+        
         setUploadedFiles([]);
         setIsConverting(false);
       }, 3000);
@@ -284,11 +563,29 @@ const App = () => {
       setUploadedFiles(uploadedFiles.filter(file => file.id !== id));
     };
 
+    if (!isLoggedIn) {
+      return (
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <div className="text-center">
+            <Lock className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">Please Log In</h2>
+            <p className="text-gray-600 mb-6">You need to be logged in to access the dashboard</p>
+            <button
+              onClick={() => setCurrentPage('login')}
+              className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition"
+            >
+              Go to Login
+            </button>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="min-h-screen bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Dashboard</h1>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome, {currentUser?.name}!</h1>
             <p className="text-gray-600">Upload and convert your bank statements</p>
           </div>
 
@@ -296,17 +593,8 @@ const App = () => {
             <div className="bg-white p-6 rounded-xl shadow-md">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-gray-600 text-sm">Available Credits</p>
-                  <p className="text-3xl font-bold text-blue-600">{userCredits}</p>
-                </div>
-                <CreditCard className="h-12 w-12 text-blue-600 opacity-20" />
-              </div>
-            </div>
-            <div className="bg-white p-6 rounded-xl shadow-md">
-              <div className="flex items-center justify-between">
-                <div>
                   <p className="text-gray-600 text-sm">Total Conversions</p>
-                  <p className="text-3xl font-bold text-green-600">{convertHistory.length}</p>
+                  <p className="text-3xl font-bold text-green-600">{currentUser?.convertHistory?.length || 0}</p>
                 </div>
                 <FileText className="h-12 w-12 text-green-600 opacity-20" />
               </div>
@@ -315,7 +603,7 @@ const App = () => {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-gray-600 text-sm">Pages Converted</p>
-                  <p className="text-3xl font-bold text-purple-600">{convertHistory.reduce((sum, item) => sum + item.pages, 0)}</p>
+                  <p className="text-3xl font-bold text-purple-600">{currentUser?.convertHistory?.reduce((sum, item) => sum + item.pages, 0) || 0}</p>
                 </div>
                 <CheckCircle className="h-12 w-12 text-purple-600 opacity-20" />
               </div>
@@ -376,7 +664,7 @@ const App = () => {
                 </p>
                 <button
                   onClick={convertFiles}
-                  disabled={isConverting || userCredits < uploadedFiles.reduce((sum, file) => sum + file.pages, 0)}
+                  disabled={isConverting || currentUser.credits < uploadedFiles.reduce((sum, file) => sum + file.pages, 0)}
                   className="bg-blue-600 text-white px-8 py-3 rounded-lg hover:bg-blue-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
                 >
                   {isConverting ? 'Converting...' : 'Convert All'}
@@ -523,10 +811,10 @@ const App = () => {
                 <button
                   onClick={() => {
                     if (!isLoggedIn) {
-                      setIsLoggedIn(true);
-                      setUserCredits(25);
+                      setCurrentPage('signup');
+                    } else {
+                      setCurrentPage('dashboard');
                     }
-                    setCurrentPage('dashboard');
                   }}
                   className={`w-full py-3 rounded-lg font-semibold transition ${
                     plan.popular
@@ -538,67 +826,6 @@ const App = () => {
                 </button>
               </div>
             ))}
-          </div>
-
-          <div className="bg-white rounded-xl shadow-lg p-8 mb-16">
-            <h2 className="text-2xl font-bold mb-6 text-center">Feature Comparison</h2>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left py-4 px-4">Feature</th>
-                    <th className="text-center py-4 px-4">Beginner</th>
-                    <th className="text-center py-4 px-4">Professional</th>
-                    <th className="text-center py-4 px-4">Business</th>
-                    <th className="text-center py-4 px-4">Enterprise</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr className="border-b">
-                    <td className="py-4 px-4">Credits per month</td>
-                    <td className="text-center py-4 px-4">500</td>
-                    <td className="text-center py-4 px-4">1100</td>
-                    <td className="text-center py-4 px-4">4500</td>
-                    <td className="text-center py-4 px-4">Unlimited</td>
-                  </tr>
-                  <tr className="border-b">
-                    <td className="py-4 px-4">Batch upload</td>
-                    <td className="text-center py-4 px-4"><CheckCircle className="h-5 w-5 text-green-500 mx-auto" /></td>
-                    <td className="text-center py-4 px-4"><CheckCircle className="h-5 w-5 text-green-500 mx-auto" /></td>
-                    <td className="text-center py-4 px-4"><CheckCircle className="h-5 w-5 text-green-500 mx-auto" /></td>
-                    <td className="text-center py-4 px-4"><CheckCircle className="h-5 w-5 text-green-500 mx-auto" /></td>
-                  </tr>
-                  <tr className="border-b">
-                    <td className="py-4 px-4">Priority support</td>
-                    <td className="text-center py-4 px-4">-</td>
-                    <td className="text-center py-4 px-4"><CheckCircle className="h-5 w-5 text-green-500 mx-auto" /></td>
-                    <td className="text-center py-4 px-4"><CheckCircle className="h-5 w-5 text-green-500 mx-auto" /></td>
-                    <td className="text-center py-4 px-4"><CheckCircle className="h-5 w-5 text-green-500 mx-auto" /></td>
-                  </tr>
-                  <tr className="border-b">
-                    <td className="py-4 px-4">API access</td>
-                    <td className="text-center py-4 px-4">-</td>
-                    <td className="text-center py-4 px-4">-</td>
-                    <td className="text-center py-4 px-4"><CheckCircle className="h-5 w-5 text-green-500 mx-auto" /></td>
-                    <td className="text-center py-4 px-4"><CheckCircle className="h-5 w-5 text-green-500 mx-auto" /></td>
-                  </tr>
-                  <tr className="border-b">
-                    <td className="py-4 px-4">Custom integrations</td>
-                    <td className="text-center py-4 px-4">-</td>
-                    <td className="text-center py-4 px-4">-</td>
-                    <td className="text-center py-4 px-4">-</td>
-                    <td className="text-center py-4 px-4"><CheckCircle className="h-5 w-5 text-green-500 mx-auto" /></td>
-                  </tr>
-                  <tr>
-                    <td className="py-4 px-4">SLA guarantee</td>
-                    <td className="text-center py-4 px-4">-</td>
-                    <td className="text-center py-4 px-4">-</td>
-                    <td className="text-center py-4 px-4">-</td>
-                    <td className="text-center py-4 px-4"><CheckCircle className="h-5 w-5 text-green-500 mx-auto" /></td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
           </div>
 
           <div className="text-center bg-blue-600 text-white rounded-xl p-12">
@@ -615,8 +842,22 @@ const App = () => {
   };
 
   const CreditsPage = () => {
+    if (!isLoggedIn) {
+      return (
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <div className="text-center">
+            <Lock className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">Please Log In</h2>
+            <button onClick={() => setCurrentPage('login')} className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition">
+              Go to Login
+            </button>
+          </div>
+        </div>
+      );
+    }
+
     const copyReferralLink = () => {
-      navigator.clipboard.writeText(`https://convertbankstatement.com/ref/${referralCode}`);
+      navigator.clipboard.writeText(`https://convertbankstatement.com/ref/${currentUser.referralCode}`);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     };
@@ -629,22 +870,22 @@ const App = () => {
           <div className="grid md:grid-cols-3 gap-6 mb-8">
             <div className="bg-gradient-to-br from-blue-600 to-blue-700 text-white p-8 rounded-xl shadow-lg">
               <p className="text-sm opacity-90 mb-2">Available Credits</p>
-              <p className="text-5xl font-bold mb-4">{userCredits}</p>
+              <p className="text-5xl font-bold mb-4">{currentUser?.credits || 0}</p>
               <button onClick={() => setCurrentPage('pricing')} className="bg-white text-blue-600 px-6 py-2 rounded-lg font-semibold hover:bg-gray-100 transition w-full">
                 Buy More Credits
               </button>
             </div>
             <div className="bg-white p-8 rounded-xl shadow-md">
-              <p className="text-gray-600 mb-2">Credits Used This Month</p>
+              <p className="text-gray-600 mb-2">Credits Used</p>
               <p className="text-4xl font-bold text-gray-900 mb-4">
-                {creditUsage.filter(c => c.type === 'conversion').reduce((sum, c) => sum + c.creditsUsed, 0)}
+                {currentUser?.creditUsage?.filter(c => c.type === 'conversion').reduce((sum, c) => sum + c.creditsUsed, 0) || 0}
               </p>
-              <p className="text-sm text-gray-500">From {creditUsage.filter(c => c.type === 'conversion').length} conversions</p>
+              <p className="text-sm text-gray-500">From {currentUser?.creditUsage?.filter(c => c.type === 'conversion').length || 0} conversions</p>
             </div>
             <div className="bg-white p-8 rounded-xl shadow-md">
               <p className="text-gray-600 mb-2">Credits Earned</p>
               <p className="text-4xl font-bold text-green-600 mb-4">
-                {Math.abs(creditUsage.filter(c => c.type === 'earned').reduce((sum, c) => sum + c.creditsUsed, 0))}
+                {Math.abs(currentUser?.creditUsage?.filter(c => c.type === 'earned').reduce((sum, c) => sum + c.creditsUsed, 0) || 0)}
               </p>
               <p className="text-sm text-gray-500">From referrals & bonuses</p>
             </div>
@@ -661,7 +902,7 @@ const App = () => {
               <div className="flex gap-2">
                 <input
                   type="text"
-                  value={`https://convertbankstatement.com/ref/${referralCode}`}
+                  value={`https://convertbankstatement.com/ref/${currentUser?.referralCode}`}
                   readOnly
                   className="flex-1 px-4 py-2 border border-gray-300 rounded-lg bg-white"
                 />
@@ -681,7 +922,7 @@ const App = () => {
                 <ul className="space-y-2 text-sm text-gray-600">
                   <li>• 1 credit = 1 page converted</li>
                   <li>• Credits never expire</li>
-                  <li>• Free users get 5 credits daily</li>
+                  <li>• Get 25 credits on signup</li>
                   <li>• Premium users get bonus credits</li>
                 </ul>
               </div>
@@ -710,7 +951,7 @@ const App = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {creditUsage.map((item) => (
+                  {currentUser?.creditUsage?.map((item) => (
                     <tr key={item.id} className="border-b hover:bg-gray-50">
                       <td className="py-3 px-4">{item.fileName}</td>
                       <td className="py-3 px-4 text-gray-600">{item.date}</td>
@@ -736,6 +977,20 @@ const App = () => {
   };
 
   const HistoryPage = () => {
+    if (!isLoggedIn) {
+      return (
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <div className="text-center">
+            <Lock className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">Please Log In</h2>
+            <button onClick={() => setCurrentPage('login')} className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition">
+              Go to Login
+            </button>
+          </div>
+        </div>
+      );
+    }
+
     const downloadFile = (fileName) => {
       alert(`Downloading ${fileName.replace('.pdf', '.xlsx')}`);
     };
@@ -748,31 +1003,29 @@ const App = () => {
           <div className="bg-white rounded-xl shadow-md p-8">
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold">Recent Conversions</h2>
-              <p className="text-gray-600">{convertHistory.length} total conversions</p>
+              <p className="text-gray-600">{currentUser?.convertHistory?.length || 0} total conversions</p>
             </div>
 
-            <div className="space-y-4">
-              {convertHistory.map((item) => (
-                <div key={item.id} className="border rounded-lg p-4 hover:bg-gray-50 transition">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-4">
-                      <div className="bg-blue-100 p-3 rounded-lg">
-                        <FileText className="h-6 w-6 text-blue-600" />
+            {currentUser?.convertHistory?.length > 0 ? (
+              <div className="space-y-4">
+                {currentUser.convertHistory.map((item) => (
+                  <div key={item.id} className="border rounded-lg p-4 hover:bg-gray-50 transition">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-4">
+                        <div className="bg-blue-100 p-3 rounded-lg">
+                          <FileText className="h-6 w-6 text-blue-600" />
+                        </div>
+                        <div>
+                          <p className="font-semibold">{item.fileName}</p>
+                          <p className="text-sm text-gray-600">
+                            {item.date} • {item.pages} pages • {item.credits} credits used
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <p className="font-semibold">{item.fileName}</p>
-                        <p className="text-sm text-gray-600">
-                          {item.date} • {item.pages} pages • {item.credits} credits used
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-3">
-                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                        item.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
-                      }`}>
-                        {item.status === 'completed' ? 'Completed' : 'Processing'}
-                      </span>
-                      {item.status === 'completed' && (
+                      <div className="flex items-center space-x-3">
+                        <span className="px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-700">
+                          Completed
+                        </span>
                         <button
                           onClick={() => downloadFile(item.fileName)}
                           className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition flex items-center"
@@ -780,12 +1033,23 @@ const App = () => {
                           <Download className="h-4 w-4 mr-2" />
                           Download
                         </button>
-                      )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <FileText className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                <p className="text-gray-500">No conversions yet. Start by uploading a file!</p>
+                <button
+                  onClick={() => setCurrentPage('dashboard')}
+                  className="mt-4 bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition"
+                >
+                  Go to Dashboard
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -793,6 +1057,20 @@ const App = () => {
   };
 
   const ProfilePage = () => {
+    if (!isLoggedIn) {
+      return (
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <div className="text-center">
+            <Lock className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">Please Log In</h2>
+            <button onClick={() => setCurrentPage('login')} className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition">
+              Go to Login
+            </button>
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="min-h-screen bg-gray-50">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -803,15 +1081,15 @@ const App = () => {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Full Name</label>
-                <input type="text" defaultValue="John Doe" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent" />
+                <input type="text" defaultValue={currentUser?.name} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent" />
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Email Address</label>
-                <input type="email" defaultValue="john.doe@example.com" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent" />
+                <input type="email" defaultValue={currentUser?.email} className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent" />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Phone Number</label>
-                <input type="tel" defaultValue="+1 234 567 8900" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent" />
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Member Since</label>
+                <input type="text" defaultValue={new Date(currentUser?.joinDate).toLocaleDateString()} disabled className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50" />
               </div>
             </div>
             <button className="mt-6 bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition">
@@ -819,31 +1097,10 @@ const App = () => {
             </button>
           </div>
 
-          <div className="bg-white rounded-xl shadow-md p-8 mb-6">
-            <h2 className="text-xl font-bold mb-6">Security</h2>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Current Password</label>
-                <input type="password" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent" />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">New Password</label>
-                <input type="password" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent" />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Confirm New Password</label>
-                <input type="password" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent" />
-              </div>
-            </div>
-            <button className="mt-6 bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition">
-              Update Password
-            </button>
-          </div>
-
           <div className="bg-white rounded-xl shadow-md p-8">
             <h2 className="text-xl font-bold mb-6 text-red-600">Danger Zone</h2>
             <p className="text-gray-600 mb-4">Once you delete your account, there is no going back. Please be certain.</p>
-            <button className="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 transition">
+            <button onClick={handleLogout} className="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 transition">
               Delete Account
             </button>
           </div>
@@ -852,228 +1109,160 @@ const App = () => {
     );
   };
 
-  const LoginPage = () => {
-    return (
-      <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white flex items-center justify-center px-4">
-        <div className="bg-white rounded-xl shadow-lg p-8 max-w-md w-full">
-          <div className="text-center mb-8">
-            <FileText className="h-12 w-12 text-blue-600 mx-auto mb-4" />
-            <h2 className="text-3xl font-bold text-gray-900 mb-2">Welcome Back</h2>
-            <p className="text-gray-600">Sign in to your account</p>
-          </div>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Email</label>
-              <input type="email" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent" placeholder="you@example.com" />
+  const ContactPage = () => (
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <h1 className="text-4xl font-bold text-gray-900 mb-4 text-center">Contact Us</h1>
+        <p className="text-xl text-gray-600 mb-12 text-center">We'd love to hear from you</p>
+
+        <div className="grid md:grid-cols-2 gap-8">
+          <div className="bg-white rounded-xl shadow-md p-8">
+            <h2 className="text-2xl font-bold mb-6">Send us a message</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Name</label>
+                <input type="text" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Email</label>
+                <input type="email" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Message</label>
+                <textarea rows="4" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent"></textarea>
+              </div>
+              <button className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition font-semibold">
+                Send Message
+              </button>
             </div>
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Password</label>
-              <input type="password" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent" placeholder="••••••••" />
-            </div>
-            <button onClick={() => { setIsLoggedIn(true); setUserCredits(25); setCurrentPage('dashboard'); }} className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition font-semibold">
-              Sign In
-            </button>
           </div>
-          <p className="text-center text-gray-600 mt-6">
-            Don't have an account?{' '}
-            <button onClick={() => { setIsLoggedIn(true); setUserCredits(25); setCurrentPage('dashboard'); }} className="text-blue-600 font-semibold hover:underline">
-              Sign up
-            </button>
+
+          <div className="space-y-6">
+            <div className="bg-white rounded-xl shadow-md p-6">
+              <h3 className="font-bold mb-2">Email</h3>
+              <p className="text-gray-600">support@convertbankstatement.com</p>
+            </div>
+            <div className="bg-white rounded-xl shadow-md p-6">
+              <h3 className="font-bold mb-2">Phone</h3>
+              <p className="text-gray-600">+1 (555) 123-4567</p>
+            </div>
+            <div className="bg-white rounded-xl shadow-md p-6">
+              <h3 className="font-bold mb-2">Address</h3>
+              <p className="text-gray-600">123 Finance Street<br />San Francisco, CA 94102</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <Footer />
+    </div>
+  );
+
+  const AboutPage = () => (
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <h1 className="text-4xl font-bold text-gray-900 mb-6 text-center">About Us</h1>
+        <div className="bg-white rounded-xl shadow-md p-8 mb-8">
+          <p className="text-lg text-gray-700 mb-4">
+            ConvertBankStatement was founded with a simple mission: to make financial data more accessible and easier to work with.
+          </p>
+          <p className="text-lg text-gray-700 mb-4">
+            We understand the frustration of manually entering bank statement data into spreadsheets. That's why we built an AI-powered solution that converts your PDF bank statements into clean, editable Excel files in seconds.
+          </p>
+          <p className="text-lg text-gray-700">
+            Our platform serves thousands of users worldwide, from individual freelancers to large enterprises, helping them save time and reduce errors in their financial workflows.
           </p>
         </div>
-      </div>
-    );
-  };
 
-  const ContactPage = () => {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4 text-center">Contact Us</h1>
-          <p className="text-xl text-gray-600 mb-12 text-center">We'd love to hear from you</p>
-
-          <div className="grid md:grid-cols-2 gap-8">
-            <div className="bg-white rounded-xl shadow-md p-8">
-              <h2 className="text-2xl font-bold mb-6">Send us a message</h2>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Name</label>
-                  <input type="text" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent" />
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Email</label>
-                  <input type="email" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent" />
-                </div>
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">Message</label>
-                  <textarea rows="4" className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-600 focus:border-transparent"></textarea>
-                </div>
-                <button className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition font-semibold">
-                  Send Message
-                </button>
-              </div>
-            </div>
-
-            <div className="space-y-6">
-              <div className="bg-white rounded-xl shadow-md p-6">
-                <h3 className="font-bold mb-2">Email</h3>
-                <p className="text-gray-600">support@convertbankstatement.com</p>
-              </div>
-              <div className="bg-white rounded-xl shadow-md p-6">
-                <h3 className="font-bold mb-2">Phone</h3>
-                <p className="text-gray-600">+1 (555) 123-4567</p>
-              </div>
-              <div className="bg-white rounded-xl shadow-md p-6">
-                <h3 className="font-bold mb-2">Address</h3>
-                <p className="text-gray-600">123 Finance Street<br />San Francisco, CA 94102</p>
-              </div>
-            </div>
+        <h2 className="text-3xl font-bold text-gray-900 mb-6 text-center">Our Values</h2>
+        <div className="grid md:grid-cols-3 gap-6">
+          <div className="bg-white p-6 rounded-xl shadow-md text-center">
+            <Lock className="h-12 w-12 text-blue-600 mx-auto mb-4" />
+            <h3 className="font-bold text-lg mb-2">Security First</h3>
+            <p className="text-gray-600">Your data privacy is our top priority</p>
+          </div>
+          <div className="bg-white p-6 rounded-xl shadow-md text-center">
+            <Zap className="h-12 w-12 text-blue-600 mx-auto mb-4" />
+            <h3 className="font-bold text-lg mb-2">Speed & Efficiency</h3>
+            <p className="text-gray-600">Fast conversions without compromising quality</p>
+          </div>
+          <div className="bg-white p-6 rounded-xl shadow-md text-center">
+            <CheckCircle className="h-12 w-12 text-blue-600 mx-auto mb-4" />
+            <h3 className="font-bold text-lg mb-2">Accuracy</h3>
+            <p className="text-gray-600">Precise data extraction every time</p>
           </div>
         </div>
-        <Footer />
       </div>
-    );
-  };
+      <Footer />
+    </div>
+  );
 
-  const AboutPage = () => {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-          <h1 className="text-4xl font-bold text-gray-900 mb-6 text-center">About Us</h1>
-          <div className="bg-white rounded-xl shadow-md p-8 mb-8">
-            <p className="text-lg text-gray-700 mb-4">
-              ConvertBankStatement was founded with a simple mission: to make financial data more accessible and easier to work with.
-            </p>
-            <p className="text-lg text-gray-700 mb-4">
-              We understand the frustration of manually entering bank statement data into spreadsheets. That's why we built an AI-powered solution that converts your PDF bank statements into clean, editable Excel files in seconds.
-            </p>
-            <p className="text-lg text-gray-700">
-              Our platform serves thousands of users worldwide, from individual freelancers to large enterprises, helping them save time and reduce errors in their financial workflows.
-            </p>
+  const PrivacyPage = () => (
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <h1 className="text-4xl font-bold text-gray-900 mb-6">Privacy Policy</h1>
+        <div className="bg-white rounded-xl shadow-md p-8 space-y-6">
+          <div>
+            <h2 className="text-2xl font-bold mb-3">1. Information We Collect</h2>
+            <p className="text-gray-700">We collect information you provide directly to us, including your name, email address, and payment information. When you upload bank statements, we temporarily process this data to perform the conversion service.</p>
           </div>
-
-          <h2 className="text-3xl font-bold text-gray-900 mb-6 text-center">Our Values</h2>
-          <div className="grid md:grid-cols-3 gap-6">
-            <div className="bg-white p-6 rounded-xl shadow-md text-center">
-              <Lock className="h-12 w-12 text-blue-600 mx-auto mb-4" />
-              <h3 className="font-bold text-lg mb-2">Security First</h3>
-              <p className="text-gray-600">Your data privacy is our top priority</p>
-            </div>
-            <div className="bg-white p-6 rounded-xl shadow-md text-center">
-              <Zap className="h-12 w-12 text-blue-600 mx-auto mb-4" />
-              <h3 className="font-bold text-lg mb-2">Speed & Efficiency</h3>
-              <p className="text-gray-600">Fast conversions without compromising quality</p>
-            </div>
-            <div className="bg-white p-6 rounded-xl shadow-md text-center">
-              <CheckCircle className="h-12 w-12 text-blue-600 mx-auto mb-4" />
-              <h3 className="font-bold text-lg mb-2">Accuracy</h3>
-              <p className="text-gray-600">Precise data extraction every time</p>
-            </div>
+          <div>
+            <h2 className="text-2xl font-bold mb-3">2. How We Use Your Information</h2>
+            <p className="text-gray-700">We use the information we collect to provide, maintain, and improve our services, process your transactions, and communicate with you about our services.</p>
           </div>
+          <div>
+            <h2 className="text-2xl font-bold mb-3">3. Data Security</h2>
+            <p className="text-gray-700">We implement robust security measures to protect your data. All uploaded files are encrypted in transit and at rest. Files are automatically deleted from our servers within 24 hours of conversion.</p>
+          </div>
+          <div>
+            <h2 className="text-2xl font-bold mb-3">4. Your Rights</h2>
+            <p className="text-gray-700">You have the right to access, update, or delete your personal information at any time. You can also request a copy of your data or object to certain processing activities.</p>
+          </div>
+          <p className="text-sm text-gray-500 pt-4 border-t">Last updated: October 30, 2025</p>
         </div>
-        <Footer />
       </div>
-    );
-  };
+      <Footer />
+    </div>
+  );
 
-  const PrivacyPage = () => {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-          <h1 className="text-4xl font-bold text-gray-900 mb-6">Privacy Policy</h1>
-          <div className="bg-white rounded-xl shadow-md p-8 space-y-6">
-            <div>
-              <h2 className="text-2xl font-bold mb-3">1. Information We Collect</h2>
-              <p className="text-gray-700">We collect information you provide directly to us, including your name, email address, and payment information. When you upload bank statements, we temporarily process this data to perform the conversion service.</p>
-            </div>
-            <div>
-              <h2 className="text-2xl font-bold mb-3">2. How We Use Your Information</h2>
-              <p className="text-gray-700">We use the information we collect to provide, maintain, and improve our services, process your transactions, and communicate with you about our services.</p>
-            </div>
-            <div>
-              <h2 className="text-2xl font-bold mb-3">3. Data Security</h2>
-              <p className="text-gray-700">We implement robust security measures to protect your data. All uploaded files are encrypted in transit and at rest. Files are automatically deleted from our servers within 24 hours of conversion.</p>
-            </div>
-            <div>
-              <h2 className="text-2xl font-bold mb-3">4. Data Retention</h2>
-              <p className="text-gray-700">We retain your account information for as long as your account is active. Uploaded documents are deleted within 24 hours. Conversion history metadata is retained for 90 days.</p>
-            </div>
-            <div>
-              <h2 className="text-2xl font-bold mb-3">5. Third-Party Services</h2>
-              <p className="text-gray-700">We use third-party payment processors to handle transactions. These providers have their own privacy policies governing their collection and use of your information.</p>
-            </div>
-            <div>
-              <h2 className="text-2xl font-bold mb-3">6. Your Rights</h2>
-              <p className="text-gray-700">You have the right to access, update, or delete your personal information at any time. You can also request a copy of your data or object to certain processing activities.</p>
-            </div>
-            <div>
-              <h2 className="text-2xl font-bold mb-3">7. Contact Us</h2>
-              <p className="text-gray-700">If you have questions about this Privacy Policy, please contact us at privacy@convertbankstatement.com</p>
-            </div>
-            <p className="text-sm text-gray-500 pt-4 border-t">Last updated: October 28, 2025</p>
+  const TermsPage = () => (
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <h1 className="text-4xl font-bold text-gray-900 mb-6">Terms of Service</h1>
+        <div className="bg-white rounded-xl shadow-md p-8 space-y-6">
+          <div>
+            <h2 className="text-2xl font-bold mb-3">1. Acceptance of Terms</h2>
+            <p className="text-gray-700">By accessing and using ConvertBankStatement, you accept and agree to be bound by the terms and provision of this agreement.</p>
           </div>
-        </div>
-        <Footer />
-      </div>
-    );
-  };
-
-  const TermsPage = () => {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-          <h1 className="text-4xl font-bold text-gray-900 mb-6">Terms of Service</h1>
-          <div className="bg-white rounded-xl shadow-md p-8 space-y-6">
-            <div>
-              <h2 className="text-2xl font-bold mb-3">1. Acceptance of Terms</h2>
-              <p className="text-gray-700">By accessing and using ConvertBankStatement, you accept and agree to be bound by the terms and provision of this agreement.</p>
-            </div>
-            <div>
-              <h2 className="text-2xl font-bold mb-3">2. Use License</h2>
-              <p className="text-gray-700">Permission is granted to temporarily download one copy of the materials on ConvertBankStatement for personal, non-commercial transitory viewing only.</p>
-            </div>
-            <div>
-              <h2 className="text-2xl font-bold mb-3">3. Service Description</h2>
-              <p className="text-gray-700">ConvertBankStatement provides an automated service to convert PDF bank statements to Excel format. We strive for accuracy but do not guarantee 100% error-free conversions.</p>
-            </div>
-            <div>
-              <h2 className="text-2xl font-bold mb-3">4. User Obligations</h2>
-              <p className="text-gray-700">You agree to use the service only for lawful purposes and in accordance with these Terms. You are responsible for maintaining the confidentiality of your account credentials.</p>
-            </div>
-            <div>
-              <h2 className="text-2xl font-bold mb-3">5. Payment Terms</h2>
-              <p className="text-gray-700">Subscription fees are billed in advance on a monthly or yearly basis. Credits are non-refundable but never expire.</p>
-            </div>
-            <div>
-              <h2 className="text-2xl font-bold mb-3">6. Limitation of Liability</h2>
-              <p className="text-gray-700">ConvertBankStatement shall not be liable for any indirect, incidental, special, consequential or punitive damages resulting from your use of the service.</p>
-            </div>
-            <div>
-              <h2 className="text-2xl font-bold mb-3">7. Termination</h2>
-              <p className="text-gray-700">We may terminate or suspend your account immediately, without prior notice, for conduct that we believe violates these Terms of Service.</p>
-            </div>
-            <div>
-              <h2 className="text-2xl font-bold mb-3">8. Changes to Terms</h2>
-              <p className="text-gray-700">We reserve the right to modify these terms at any time. We will notify users of any material changes via email.</p>
-            </div>
-            <p className="text-sm text-gray-500 pt-4 border-t">Last updated: October 28, 2025</p>
+          <div>
+            <h2 className="text-2xl font-bold mb-3">2. Service Description</h2>
+            <p className="text-gray-700">ConvertBankStatement provides an automated service to convert PDF bank statements to Excel format. We strive for accuracy but do not guarantee 100% error-free conversions.</p>
           </div>
+          <div>
+            <h2 className="text-2xl font-bold mb-3">3. User Obligations</h2>
+            <p className="text-gray-700">You agree to use the service only for lawful purposes and in accordance with these Terms. You are responsible for maintaining the confidentiality of your account credentials.</p>
+          </div>
+          <div>
+            <h2 className="text-2xl font-bold mb-3">4. Payment Terms</h2>
+            <p className="text-gray-700">Subscription fees are billed in advance on a monthly or yearly basis. Credits are non-refundable but never expire.</p>
+          </div>
+          <p className="text-sm text-gray-500 pt-4 border-t">Last updated: October 30, 2025</p>
         </div>
-        <Footer />
       </div>
-    );
-  };
+      <Footer />
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-white">
       <Navigation />
       {currentPage === 'landing' && <LandingPage />}
+      {currentPage === 'login' && <LoginPage />}
+      {currentPage === 'signup' && <SignupPage />}
       {currentPage === 'dashboard' && <Dashboard />}
       {currentPage === 'pricing' && <PricingPage />}
       {currentPage === 'credits' && <CreditsPage />}
       {currentPage === 'history' && <HistoryPage />}
       {currentPage === 'profile' && <ProfilePage />}
-      {currentPage === 'login' && <LoginPage />}
       {currentPage === 'contact' && <ContactPage />}
       {currentPage === 'about' && <AboutPage />}
       {currentPage === 'privacy' && <PrivacyPage />}
@@ -1082,4 +1271,13 @@ const App = () => {
   );
 };
 
-export default App;
+export default App;-between">
+                <div>
+                  <p className="text-gray-600 text-sm">Available Credits</p>
+                  <p className="text-3xl font-bold text-blue-600">{currentUser?.credits || 0}</p>
+                </div>
+                <CreditCard className="h-12 w-12 text-blue-600 opacity-20" />
+              </div>
+            </div>
+            <div className="bg-white p-6 rounded-xl shadow-md">
+              <div className="flex items-center justify
