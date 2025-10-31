@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+
+{% block title %}Try Free - ConvertBankStatement{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-gray-900 mb-4">Try Free Conversion</h1>
+            <p class="text-xl text-gray-600">Convert 1 page for free without signing up</p>
+        </div>
+
+        {% if can_convert %}
+        <div class="bg-white rounded-xl shadow-md p-8">
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                <p class="text-blue-800 font-semibold">
+                    <i class="fas fa-info-circle mr-2"></i>
+                    Guest users can convert 1 page per month. Sign up for 25 free credits!
+                </p>
+            </div>
+
+            <form id="guestUploadForm" enctype="multipart/form-data">
+                <div id="dropZone" class="border-2 border-dashed border-gray-300 rounded-xl p-12 text-center transition hover:border-blue-600 hover:bg-blue-50 cursor-pointer">
+                    <i class="fas fa-cloud-upload-alt text-gray-400 text-6xl mb-4"></i>
+                    <p class="text-lg font-semibold text-gray-700 mb-2">Drag and drop your file here</p>
+                    <p class="text-gray-500 mb-4">or</p>
+                    <label class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition cursor-pointer inline-block">
+                        Browse Files
+                        <input type="file" name="file" id="fileInput" accept=".pdf,.png,.jpg,.jpeg" class="hidden">
+                    </label>
+                    <p class="text-sm text-gray-500 mt-4">Supports PDF and image files (1 page only)</p>
+                </div>
+            </form>
+
+            <div id="uploadStatus" class="mt-4 hidden">
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <div class="flex items-center">
+                        <i class="fas fa-spinner fa-spin text-blue-600 mr-3"></i>
+                        <span class="text-blue-800 font-semibold">Converting your file...</span>
+                    </div>
+                </div>
+            </div>
+
+            <div id="uploadResult" class="mt-4 hidden"></div>
+        </div>
+
+        <div class="mt-8 text-center">
+            <p class="text-gray-600 mb-4">Want more? Sign up for free!</p>
+            <a href="{{ url_for('signup') }}" class="bg-blue-600 text-white px-8 py-3 rounded-lg hover:bg-blue-700 transition inline-flex items-center font-semibold">
+                <i class="fas fa-rocket mr-2"></i>
+                Sign Up for 25 Free Credits
+            </a>
+        </div>
+        {% else %}
+        <div class="bg-white rounded-xl shadow-md p-8 text-center">
+            <i class="fas fa-exclamation-triangle text-yellow-500 text-6xl mb-4"></i>
+            <h2 class="text-2xl font-bold text-gray-900 mb-4">Monthly Limit Reached</h2>
+            <p class="text-gray-600 mb-6">You've used your free guest conversion for this month.</p>
+            <a href="{{ url_for('signup') }}" class="bg-blue-600 text-white px-8 py-3 rounded-lg hover:bg-blue-700 transition inline-flex items-center font-semibold">
+                <i class="fas fa-rocket mr-2"></i>
+                Sign Up for 25 Free Credits
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% if can_convert %}
+<script>
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+    const uploadForm = document.getElementById('guestUploadForm');
+    const uploadStatus = document.getElementById('uploadStatus');
+    const uploadResult = document.getElementById('uploadResult');
+
+    dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.classList.add('border-blue-600', 'bg-blue-50');
+    });
+
+    dropZone.addEventListener('dragleave', () => {
+        dropZone.classList.remove('border-blue-600', 'bg-blue-50');
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('border-blue-600', 'bg-blue-50');
+        
+        if (e.dataTransfer.files.length > 0) {
+            fileInput.files = e.dataTransfer.files;
+            handleUpload();
+        }
+    });
+
+    fileInput.addEventListener('change', handleUpload);
+
+    function handleUpload() {
+        const file = fileInput.files[0];
+        if (!file) return;
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        uploadStatus.classList.remove('hidden');
+        uploadResult.classList.add('hidden');
+
+        fetch('{{ url_for("guest_convert") }}', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            uploadStatus.classList.add('hidden');
+            uploadResult.classList.remove('hidden');
+
+            if (data.success) {
+                uploadResult.innerHTML = `
+                    <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-green-800 font-semibold mb-1">✓ Conversion Successful!</p>
+                                <p class="text-sm text-green-700">${data.message}</p>
+                            </div>
+                            <a href="${data.download_url}" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition inline-flex items-center">
+                                <i class="fas fa-download mr-2"></i>
+                                Download
+                            </a>
+                        </div>
+                    </div>
+                `;
+            } else {
+                uploadResult.innerHTML = `
+                    <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+                        <p class="text-red-800 font-semibold">✗ Conversion Failed</p>
+                        <p class="text-sm text-red-700">${data.message}</p>
+                    </div>
+                `;
+            }
+        })
+        .catch(error => {
+            uploadStatus.classList.add('hidden');
+            uploadResult.classList.remove('hidden');
+            uploadResult.innerHTML = `
+                <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+                    <p class="text-red-800 font-semibold">✗ Error</p>
+                    <p class="text-sm text-red-700">An error occurred. Please try again.</p>
+                </div>
+            `;
+        });
+    }
+</script>
+{% endif %}
+{% endblock %}
