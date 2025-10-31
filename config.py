@@ -13,6 +13,6 @@ class Config:
     
     # Credit system
     GUEST_CREDITS_PER_MONTH = 1
-    SIGNED_UP_CREDITS = 5  # Daily bonus
-    SIGNUP_BONUS = 25
+    SIGNED_UP_CREDITS_PER_MONTH = 5
+    SIGNUP_BONUS = 5
     REFERRAL_BONUS = 15
