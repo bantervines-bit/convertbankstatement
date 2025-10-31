@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+
+{% block title %}ConvertBankStatement - Convert PDF to Excel{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-b from-blue-50 to-white">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <!-- Hero Section -->
+        <div class="text-center py-20">
+            <h1 class="text-5xl md:text-6xl font-bold text-gray-900 mb-6">
+                Convert Your Bank Statement<br />to Excel Instantly
+            </h1>
+            <p class="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
+                Upload your PDF bank statements and get clean, editable Excel files in seconds — fast, secure, and precise.
+            </p>
+            {% if current_user.is_authenticated %}
+                <a href="{{ url_for('dashboard') }}" class="bg-blue-600 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-blue-700 transition shadow-lg hover:shadow-xl inline-flex items-center">
+                    <i class="fas fa-upload mr-2"></i>
+                    Upload PDF
+                </a>
+            {% else %}
+                <a href="{{ url_for('signup') }}" class="bg-blue-600 text-white px-8 py-4 rounded-lg text-lg font-semibold hover:bg-blue-700 transition shadow-lg hover:shadow-xl inline-flex items-center">
+                    <i class="fas fa-rocket mr-2"></i>
+                    Get Started Free
+                </a>
+            {% endif %}
+            <p class="text-sm text-gray-500 mt-4">
+                {% if current_user.is_authenticated %}
+                    You have {{ current_user.credits }} credits available
+                {% else %}
+                    Signed users get 25 free credits • Guests get 1 free page/month
+                {% endif %}
+            </p>
+        </div>
+
+        <!-- Features Section -->
+        <div class="grid md:grid-cols-3 gap-8 py-16">
+            <div class="bg-white p-8 rounded-xl shadow-md hover:shadow-lg transition text-center">
+                <div class="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fas fa-lock text-blue-600 text-3xl"></i>
+                </div>
+                <h3 class="text-xl font-bold mb-3">Secure</h3>
+                <p class="text-gray-600">Your data is encrypted and automatically deleted after conversion.</p>
+            </div>
+            <div class="bg-white p-8 rounded-xl shadow-md hover:shadow-lg transition text-center">
+                <div class="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fas fa-bolt text-blue-600 text-3xl"></i>
+                </div>
+                <h3 class="text-xl font-bold mb-3">Fast</h3>
+                <p class="text-gray-600">Convert PDF to XLS in seconds with high accuracy.</p>
+            </div>
+            <div class="bg-white p-8 rounded-xl shadow-md hover:shadow-lg transition text-center">
+                <div class="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fas fa-check-circle text-blue-600 text-3xl"></i>
+                </div>
+                <h3 class="text-xl font-bold mb-3">Precise</h3>
+                <p class="text-gray-600">Extracts every transaction and formats it cleanly in Excel.</p>
+            </div>
+        </div>
+
+        <!-- How It Works -->
+        <div class="py-16 bg-white rounded-2xl shadow-lg my-16 px-8">
+            <h2 class="text-3xl font-bold text-center mb-12">How ConvertBankStatement Works</h2>
+            <div class="grid md:grid-cols-3 gap-8">
+                <div class="text-center">
+                    <div class="bg-blue-600 text-white w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4 text-xl font-bold">1</div>
+                    <h3 class="text-lg font-semibold mb-2">Upload your PDF file</h3>
+                    <p class="text-gray-600">Drag and drop or click to upload your bank statement</p>
+                </div>
+                <div class="text-center">
+                    <div class="bg-blue-600 text-white w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4 text-xl font-bold">2</div>
+                    <h3 class="text-lg font-semibold mb-2">AI processes and extracts data</h3>
+                    <p class="text-gray-600">Our AI reads and extracts transaction details accurately</p>
+                </div>
+                <div class="text-center">
+                    <div class="bg-blue-600 text-white w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4 text-xl font-bold">3</div>
+                    <h3 class="text-lg font-semibold mb-2">Download Excel file instantly</h3>
+                    <p class="text-gray-600">Get your formatted Excel file ready to use</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Plans Overview -->
+        <div class="py-16">
+            <h2 class="text-3xl font-bold text-center mb-12">Plans & Usage Limits</h2>
+            <div class="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+                <div class="bg-white p-8 rounded-xl shadow-md border-2 border-gray-200">
+                    <h3 class="text-2xl font-bold mb-4">Guest</h3>
+                    <p class="text-gray-600 mb-4">Try without signing up</p>
+                    <p class="text-3xl font-bold text-blue-600 mb-4">Free</p>
+                    <ul class="text-sm text-gray-600 space-y-2">
+                        <li>✓ 1 page/month</li>
+                        <li>✓ No signup required</li>
+                    </ul>
+                    <a href="{{ url_for('guest_convert') }}" class="block mt-6 bg-gray-100 text-gray-900 px-6 py-3 rounded-lg hover:bg-gray-200 transition text-center font-semibold">
+                        Try Now
+                    </a>
+                </div>
+                <div class="bg-white p-8 rounded-xl shadow-md border-2 border-blue-600 transform scale-105">
+                    <div class="bg-blue-600 text-white text-xs px-3 py-1 rounded-full inline-block mb-2">POPULAR</div>
+                    <h3 class="text-2xl font-bold mb-4">Signed Up</h3>
+                    <p class="text-gray-600 mb-4">Get 25 credits + 5 daily</p>
+                    <p class="text-3xl font-bold text-blue-600 mb-4">Free</p>
+                    <ul class="text-sm text-gray-600 space-y-2">
+                        <li>✓ 25 signup credits</li>
+                        <li>✓ 5 daily bonus credits</li>
+                        <li>✓ Referral rewards</li>
+                    </ul>
+                    <a href="{{ url_for('signup') }}" class="block mt-6 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition text-center font-semibold">
+                        Sign Up Free
+                    </a>
+                </div>
+                <div class="bg-gradient-to-br from-blue-600 to-blue-700 p-8 rounded-xl shadow-lg text-white">
+                    <h3 class="text-2xl font-bold mb-4">Premium</h3>
+                    <p class="mb-4">Unlimited conversions</p>
+                    <p class="text-3xl font-bold mb-4">From $14/mo</p>
+                    <ul class="text-sm space-y-2">
+                        <li>✓ Unlimited credits</li>
+                        <li>✓ Priority support</li>
+                        <li>✓ API access</li>
+                    </ul>
+                    <a href="{{ url_for('pricing') }}" class="block mt-6 bg-white text-blue-600 px-6 py-3 rounded-lg hover:bg-gray-100 transition text-center font-semibold">
+                        View Plans
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
