@@ -1,0 +1,194 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - ConvertBankStatement{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div class="mb-8">
+            <h1 class="text-3xl font-bold text-gray-900 mb-2">Welcome, {{ user.name }}!</h1>
+            <p class="text-gray-600">Upload and convert your bank statements</p>
+        </div>
+
+        <!-- Stats Cards -->
+        <div class="grid md:grid-cols-3 gap-6 mb-8">
+            <div class="bg-white p-6 rounded-xl shadow-md">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-600 text-sm">Available Credits</p>
+                        <p class="text-3xl font-bold text-blue-600">{{ user.credits }}</p>
+                    </div>
+                    <i class="fas fa-coins text-blue-600 text-4xl opacity-20"></i>
+                </div>
+            </div>
+            <div class="bg-white p-6 rounded-xl shadow-md">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-600 text-sm">Total Conversions</p>
+                        <p class="text-3xl font-bold text-green-600">{{ user.conversions|length }}</p>
+                    </div>
+                    <i class="fas fa-file-excel text-green-600 text-4xl opacity-20"></i>
+                </div>
+            </div>
+            <div class="bg-white p-6 rounded-xl shadow-md">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-gray-600 text-sm">Pages Converted</p>
+                        <p class="text-3xl font-bold text-purple-600">{{ user.conversions|sum(attribute='pages') or 0 }}</p>
+                    </div>
+                    <i class="fas fa-check-circle text-purple-600 text-4xl opacity-20"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Upload Section -->
+        <div class="bg-white rounded-xl shadow-md p-8 mb-8">
+            <h2 class="text-xl font-bold mb-4">Upload Files</h2>
+            <form id="uploadForm" enctype="multipart/form-data">
+                <div id="dropZone" class="border-2 border-dashed border-gray-300 rounded-xl p-12 text-center transition hover:border-blue-600 hover:bg-blue-50 cursor-pointer">
+                    <i class="fas fa-cloud-upload-alt text-gray-400 text-6xl mb-4"></i>
+                    <p class="text-lg font-semibold text-gray-700 mb-2">Drag and drop your files here</p>
+                    <p class="text-gray-500 mb-4">or</p>
+                    <label class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition cursor-pointer inline-block">
+                        Browse Files
+                        <input type="file" name="file" id="fileInput" accept=".pdf,.png,.jpg,.jpeg" class="hidden">
+                    </label>
+                    <p class="text-sm text-gray-500 mt-4">Supports PDF and image files (JPG, PNG)</p>
+                </div>
+            </form>
+
+            <div id="uploadStatus" class="mt-4 hidden">
+                <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <div class="flex items-center">
+                        <i class="fas fa-spinner fa-spin text-blue-600 mr-3"></i>
+                        <span class="text-blue-800 font-semibold">Converting your file...</span>
+                    </div>
+                </div>
+            </div>
+
+            <div id="uploadResult" class="mt-4 hidden"></div>
+        </div>
+
+        <!-- Recent Conversions -->
+        {% if recent_conversions %}
+        <div class="bg-white rounded-xl shadow-md p-8">
+            <h2 class="text-xl font-bold mb-4">Recent Conversions</h2>
+            <div class="space-y-4">
+                {% for conversion in recent_conversions %}
+                <div class="border rounded-lg p-4 hover:bg-gray-50 transition">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-4">
+                            <div class="bg-blue-100 p-3 rounded-lg">
+                                <i class="fas fa-file-excel text-blue-600 text-2xl"></i>
+                            </div>
+                            <div>
+                                <p class="font-semibold">{{ conversion.original_filename }}</p>
+                                <p class="text-sm text-gray-600">
+                                    {{ conversion.created_at.strftime('%Y-%m-%d %H:%M') }} • {{ conversion.pages }} pages • {{ conversion.credits_used }} credits used
+                                </p>
+                            </div>
+                        </div>
+                        <a href="{{ url_for('download', filename=conversion.converted_filename) }}" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition inline-flex items-center">
+                            <i class="fas fa-download mr-2"></i>
+                            Download
+                        </a>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('fileInput');
+    const uploadForm = document.getElementById('uploadForm');
+    const uploadStatus = document.getElementById('uploadStatus');
+    const uploadResult = document.getElementById('uploadResult');
+
+    // Drag and drop handlers
+    dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.classList.add('border-blue-600', 'bg-blue-50');
+    });
+
+    dropZone.addEventListener('dragleave', () => {
+        dropZone.classList.remove('border-blue-600', 'bg-blue-50');
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('border-blue-600', 'bg-blue-50');
+        
+        if (e.dataTransfer.files.length > 0) {
+            fileInput.files = e.dataTransfer.files;
+            handleUpload();
+        }
+    });
+
+    fileInput.addEventListener('change', handleUpload);
+
+    function handleUpload() {
+        const file = fileInput.files[0];
+        if (!file) return;
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        uploadStatus.classList.remove('hidden');
+        uploadResult.classList.add('hidden');
+
+        fetch('{{ url_for("convert") }}', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            uploadStatus.classList.add('hidden');
+            uploadResult.classList.remove('hidden');
+
+            if (data.success) {
+                uploadResult.innerHTML = `
+                    <div class="bg-green-50 border border-green-200 rounded-lg p-4">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-green-800 font-semibold mb-1">✓ Conversion Successful!</p>
+                                <p class="text-sm text-green-700">${data.message}</p>
+                                <p class="text-sm text-green-700 mt-1">Credits used: ${data.credits_used} | Remaining: ${data.remaining_credits}</p>
+                            </div>
+                            <a href="${data.download_url}" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition inline-flex items-center">
+                                <i class="fas fa-download mr-2"></i>
+                                Download
+                            </a>
+                        </div>
+                    </div>
+                `;
+                
+                // Update credits display
+                setTimeout(() => location.reload(), 2000);
+            } else {
+                uploadResult.innerHTML = `
+                    <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+                        <p class="text-red-800 font-semibold">✗ Conversion Failed</p>
+                        <p class="text-sm text-red-700">${data.message}</p>
+                    </div>
+                `;
+            }
+        })
+        .catch(error => {
+            uploadStatus.classList.add('hidden');
+            uploadResult.classList.remove('hidden');
+            uploadResult.innerHTML = `
+                <div class="bg-red-50 border border-red-200 rounded-lg p-4">
+                    <p class="text-red-800 font-semibold">✗ Error</p>
+                    <p class="text-sm text-red-700">An error occurred. Please try again.</p>
+                </div>
+            `;
+        });
+    }
+</script>
+{% endblock %}
