@@ -390,4 +390,583 @@ const App = () => {
       </div>
     </div>
   );
-  
+  const Dashboard = () => {
+    const handleFileUpload = (files) => {
+      const newFiles = Array.from(files).map(file => ({
+        id: Date.now() + Math.random(),
+        name: file.name,
+        size: (file.size / 1024 / 1024).toFixed(2),
+        pages: Math.floor(Math.random() * 5) + 1,
+        status: 'pending'
+      }));
+      setUploadedFiles([...uploadedFiles, ...newFiles]);
+    };
+
+    const handleDragOver = (e) => {
+      e.preventDefault();
+      setIsDragging(true);
+    };
+
+    const handleDragLeave = () => {
+      setIsDragging(false);
+    };
+
+    const handleDrop = (e) => {
+      e.preventDefault();
+      setIsDragging(false);
+      handleFileUpload(e.dataTransfer.files);
+    };
+
+    const convertFiles = () => {
+      setIsConverting(true);
+      const totalPages = uploadedFiles.reduce((sum, file) => sum + file.pages, 0);
+      
+      setTimeout(() => {
+        const newHistory = uploadedFiles.map(file => ({
+          id: Date.now() + Math.random(),
+          fileName: file.name,
+          date: new Date().toISOString().split('T')[0],
+          credits: file.pages,
+          status: 'completed',
+          pages: file.pages
+        }));
+        
+        const updatedHistory = [...newHistory, ...(currentUser?.convertHistory || [])];
+        const newCreditsUsage = uploadedFiles.map(file => ({
+          id: Date.now() + Math.random(),
+          fileName: file.name,
+          date: new Date().toISOString().split('T')[0],
+          creditsUsed: file.pages,
+          type: 'conversion'
+        }));
+        
+        const updatedCreditUsage = [...newCreditsUsage, ...(currentUser?.creditUsage || [])];
+        
+        updateUserData({
+          credits: currentUser.credits - totalPages,
+          convertHistory: updatedHistory,
+          creditUsage: updatedCreditUsage
+        });
+        
+        setUploadedFiles([]);
+        setIsConverting(false);
+      }, 3000);
+    };
+
+    const removeFile = (id) => {
+      setUploadedFiles(uploadedFiles.filter(file => file.id !== id));
+    };
+
+    if (!isLoggedIn) {
+      return (
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <div className="text-center">
+            <Lock className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">Please Log In</h2>
+            <p className="text-gray-600 mb-6">You need to be logged in to access the dashboard</p>
+            <button onClick={() => setCurrentPage('login')} className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition">
+              Go to Login
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="mb-8">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome, {currentUser?.name}!</h1>
+            <p className="text-gray-600">Upload and convert your bank statements</p>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-6 mb-8">
+            <div className="bg-white p-6 rounded-xl shadow-md">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-gray-600 text-sm">Available Credits</p>
+                  <p className="text-3xl font-bold text-blue-600">{currentUser?.credits || 0}</p>
+                </div>
+                <CreditCard className="h-12 w-12 text-blue-600 opacity-20" />
+              </div>
+            </div>
+            <div className="bg-white p-6 rounded-xl shadow-md">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-gray-600 text-sm">Total Conversions</p>
+                  <p className="text-3xl font-bold text-green-600">{currentUser?.convertHistory?.length || 0}</p>
+                </div>
+                <FileText className="h-12 w-12 text-green-600 opacity-20" />
+              </div>
+            </div>
+            <div className="bg-white p-6 rounded-xl shadow-md">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-gray-600 text-sm">Pages Converted</p>
+                  <p className="text-3xl font-bold text-purple-600">{currentUser?.convertHistory?.reduce((sum, item) => sum + item.pages, 0) || 0}</p>
+                </div>
+                <CheckCircle className="h-12 w-12 text-purple-600 opacity-20" />
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl shadow-md p-8 mb-8">
+            <h2 className="text-xl font-bold mb-4">Upload Files</h2>
+            <div onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop} className={`border-2 border-dashed rounded-xl p-12 text-center transition ${isDragging ? 'border-blue-600 bg-blue-50' : 'border-gray-300'}`}>
+              <Upload className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+              <p className="text-lg font-semibold text-gray-700 mb-2">Drag and drop your files here</p>
+              <p className="text-gray-500 mb-4">or</p>
+              <label className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition cursor-pointer inline-block">
+                Browse Files
+                <input type="file" multiple accept=".pdf,image/*" className="hidden" onChange={(e) => handleFileUpload(e.target.files)} />
+              </label>
+              <p className="text-sm text-gray-500 mt-4">Supports PDF and image files (JPG, PNG)</p>
+            </div>
+          </div>
+
+          {uploadedFiles.length > 0 && (
+            <div className="bg-white rounded-xl shadow-md p-8 mb-8">
+              <h2 className="text-xl font-bold mb-4">Uploaded Files ({uploadedFiles.length})</h2>
+              <div className="space-y-4">
+                {uploadedFiles.map(file => (
+                  <div key={file.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                    <div className="flex items-center space-x-4">
+                      <FileText className="h-8 w-8 text-blue-600" />
+                      <div>
+                        <p className="font-semibold">{file.name}</p>
+                        <p className="text-sm text-gray-500">{file.size} MB • {file.pages} pages • {file.pages} credits</p>
+                      </div>
+                    </div>
+                    <button onClick={() => removeFile(file.id)} className="text-red-600 hover:text-red-700">
+                      <Trash2 className="h-5 w-5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-6 flex items-center justify-between">
+                <p className="text-gray-600">
+                  Total credits needed: <span className="font-bold text-blue-600">{uploadedFiles.reduce((sum, file) => sum + file.pages, 0)}</span>
+                </p>
+                <button onClick={convertFiles} disabled={isConverting || currentUser.credits < uploadedFiles.reduce((sum, file) => sum + file.pages, 0)} className="bg-blue-600 text-white px-8 py-3 rounded-lg hover:bg-blue-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed">
+                  {isConverting ? 'Converting...' : 'Convert All'}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  const PricingPage = () => {
+    const monthlyPlans = [
+      { name: 'Beginner', price: 14, credits: 500, features: ['500 credits/month', 'Email support', 'Basic features'] },
+      { name: 'Professional', price: 29, credits: 1100, features: ['1100 credits/month', 'Priority support', 'All features'], popular: true },
+      { name: 'Business', price: 49, credits: 4500, features: ['4500 credits/month', 'Dedicated support', 'API access'] },
+    ];
+
+    const yearlyPlans = [
+      { name: 'Beginner', price: 99, credits: '6000', features: ['500 credits/month', 'Email support', 'Basic features'], save: '30%' },
+      { name: 'Professional', price: 199, credits: '13200', features: ['1100 credits/month', 'Priority support', 'All features'], popular: true, save: '42%' },
+      { name: 'Business', price: 299, credits: '54000', features: ['4500 credits/month', 'Dedicated support', 'API access'], save: '49%' },
+    ];
+
+    const plans = pricingPeriod === 'monthly' ? monthlyPlans : yearlyPlans;
+
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+          <div className="text-center mb-12">
+            <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">Simple, Transparent Pricing</h1>
+            <p className="text-xl text-gray-600 mb-8">Choose the plan that fits your needs</p>
+            <div className="inline-flex bg-white rounded-lg p-1 shadow-md">
+              <button onClick={() => setPricingPeriod('monthly')} className={`px-6 py-2 rounded-lg transition ${pricingPeriod === 'monthly' ? 'bg-blue-600 text-white' : 'text-gray-600'}`}>
+                Monthly
+              </button>
+              <button onClick={() => setPricingPeriod('yearly')} className={`px-6 py-2 rounded-lg transition ${pricingPeriod === 'yearly' ? 'bg-blue-600 text-white' : 'text-gray-600'}`}>
+                Yearly
+              </button>
+            </div>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-6 mb-16">
+            {plans.map((plan, index) => (
+              <div key={index} className={`bg-white rounded-xl shadow-lg p-8 relative ${plan.popular ? 'border-2 border-blue-600 transform scale-105' : ''}`}>
+                {plan.popular && (
+                  <div className="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+                    <span className="bg-blue-600 text-white px-4 py-1 rounded-full text-sm font-semibold">MOST POPULAR</span>
+                  </div>
+                )}
+                <h3 className="text-2xl font-bold mb-2">{plan.name}</h3>
+                <div className="mb-4">
+                  <span className="text-4xl font-bold text-blue-600">${plan.price}</span>
+                  <span className="text-gray-600">/{pricingPeriod === 'monthly' ? 'mo' : 'yr'}</span>
+                </div>
+                <p className="text-gray-600 mb-6">{plan.credits} credits</p>
+                <ul className="space-y-3 mb-8">
+                  {plan.features.map((feature, i) => (
+                    <li key={i} className="flex items-start">
+                      <CheckCircle className="h-5 w-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" />
+                      <span className="text-gray-700">{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+                <button onClick={() => !isLoggedIn ? setCurrentPage('signup') : setCurrentPage('dashboard')} className={`w-full py-3 rounded-lg font-semibold transition ${plan.popular ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-100 text-gray-900 hover:bg-gray-200'}`}>
+                  Get Started
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+        <Footer />
+      </div>
+    );
+  };
+
+  const CreditsPage = () => {
+    if (!isLoggedIn) {
+      return (
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <div className="text-center">
+            <Lock className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">Please Log In</h2>
+            <button onClick={() => setCurrentPage('login')} className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition">Go to Login</button>
+          </div>
+        </div>
+      );
+    }
+
+    const copyReferralLink = () => {
+      navigator.clipboard.writeText(`https://convertbankstatement.com/ref/${currentUser.referralCode}`);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    };
+
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-8">Credits Management</h1>
+          <div className="grid md:grid-cols-3 gap-6 mb-8">
+            <div className="bg-gradient-to-br from-blue-600 to-blue-700 text-white p-8 rounded-xl shadow-lg">
+              <p className="text-sm opacity-90 mb-2">Available Credits</p>
+              <p className="text-5xl font-bold mb-4">{currentUser?.credits || 0}</p>
+              <button onClick={() => setCurrentPage('pricing')} className="bg-white text-blue-600 px-6 py-2 rounded-lg font-semibold hover:bg-gray-100 transition w-full">Buy More Credits</button>
+            </div>
+            <div className="bg-white p-8 rounded-xl shadow-md">
+              <p className="text-gray-600 mb-2">Credits Used</p>
+              <p className="text-4xl font-bold text-gray-900 mb-4">{currentUser?.creditUsage?.filter(c => c.type === 'conversion').reduce((sum, c) => sum + c.creditsUsed, 0) || 0}</p>
+            </div>
+            <div className="bg-white p-8 rounded-xl shadow-md">
+              <p className="text-gray-600 mb-2">Credits Earned</p>
+              <p className="text-4xl font-bold text-green-600 mb-4">{Math.abs(currentUser?.creditUsage?.filter(c => c.type === 'earned').reduce((sum, c) => sum + c.creditsUsed, 0) || 0)}</p>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl shadow-md p-8 mb-8">
+            <h2 className="text-2xl font-bold mb-4 flex items-center">
+              <Gift className="h-6 w-6 text-blue-600 mr-2" />Earn More Credits
+            </h2>
+            <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-6 rounded-lg mb-6">
+              <h3 className="font-bold text-lg mb-2">Referral Program</h3>
+              <p className="text-gray-700 mb-4">Share your unique referral link and earn 15 free credits for each person who signs up!</p>
+              <div className="flex gap-2">
+                <input type="text" value={`https://convertbankstatement.com/ref/${currentUser?.referralCode}`} readOnly className="flex-1 px-4 py-2 border border-gray-300 rounded-lg bg-white" />
+                <button onClick={copyReferralLink} className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition flex items-center">
+                  {copied ? <Check className="h-5 w-5" /> : <Copy className="h-5 w-5" />}
+                  <span className="ml-2">{copied ? 'Copied!' : 'Copy'}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl shadow-md p-8">
+            <h2 className="text-2xl font-bold mb-4">Credit Usage History</h2>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left py-3 px-4">Description</th>
+                    <th className="text-left py-3 px-4">Date</th>
+                    <th className="text-right py-3 px-4">Credits</th>
+                    <th className="text-right py-3 px-4">Type</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {currentUser?.creditUsage?.map((item) => (
+                    <tr key={item.id} className="border-b hover:bg-gray-50">
+                      <td className="py-3 px-4">{item.fileName}</td>
+                      <td className="py-3 px-4 text-gray-600">{item.date}</td>
+                      <td className={`py-3 px-4 text-right font-semibold ${item.creditsUsed < 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        {item.creditsUsed < 0 ? '+' : '-'}{Math.abs(item.creditsUsed)}
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${item.type === 'earned' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
+                          {item.type === 'earned' ? 'Earned' : 'Used'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const HistoryPage = () => {
+    if (!isLoggedIn) {
+      return (
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <div className="text-center">
+            <Lock className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">Please Log In</h2>
+            <button onClick={() => setCurrentPage('login')} className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition">Go to Login</button>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-8">Conversion History</h1>
+          <div className="bg-white rounded-xl shadow-md p-8">
+            <h2 className="text-xl font-bold mb-6">Recent Conversions</h2>
+            {currentUser?.convertHistory?.length > 0 ? (
+              <div className="space-y-4">
+                {currentUser.convertHistory.map((item) => (
+                  <div key={item.id} className="border rounded-lg p-4 hover:bg-gray-50 transition">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-4">
+                        <div className="bg-blue-100 p-3 rounded-lg">
+                          <FileText className="h-6 w-6 text-blue-600" />
+                        </div>
+                        <div>
+                          <p className="font-semibold">{item.fileName}</p>
+                          <p className="text-sm text-gray-600">{item.date} • {item.pages} pages • {item.credits} credits used</p>
+                        </div>
+                      </div>
+                      <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition flex items-center">
+                        <Download className="h-4 w-4 mr-2" />Download
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <FileText className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                <p className="text-gray-500">No conversions yet</p>
+                <button onClick={() => setCurrentPage('dashboard')} className="mt-4 bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition">Go to Dashboard</button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const ProfilePage = () => {
+    if (!isLoggedIn) {
+      return (
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <div className="text-center">
+            <Lock className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">Please Log In</h2>
+            <button onClick={() => setCurrentPage('login')} className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition">Go to Login</button>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <h1 className="text-3xl font-bold text-gray-900 mb-8">Profile Settings</h1>
+          <div className="bg-white rounded-xl shadow-md p-8 mb-6">
+            <h2 className="text-xl font-bold mb-6">Account Information</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Full Name</label>
+                <input type="text" defaultValue={currentUser?.name} className="w-full px-4 py-2 border border-gray-300 rounded-lg" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Email Address</label>
+                <input type="email" defaultValue={currentUser?.email} className="w-full px-4 py-2 border border-gray-300 rounded-lg" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Member Since</label>
+                <input type="text" defaultValue={new Date(currentUser?.joinDate).toLocaleDateString()} disabled className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50" />
+              </div>
+            </div>
+            <button className="mt-6 bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition">Save Changes</button>
+          </div>
+          <div className="bg-white rounded-xl shadow-md p-8">
+            <h2 className="text-xl font-bold mb-6 text-red-600">Danger Zone</h2>
+            <p className="text-gray-600 mb-4">Once you delete your account, there is no going back.</p>
+            <button onClick={handleLogout} className="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 transition">Delete Account</button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+  const ContactPage = () => (
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <h1 className="text-4xl font-bold text-gray-900 mb-4 text-center">Contact Us</h1>
+        <p className="text-xl text-gray-600 mb-12 text-center">We'd love to hear from you</p>
+        <div className="grid md:grid-cols-2 gap-8">
+          <div className="bg-white rounded-xl shadow-md p-8">
+            <h2 className="text-2xl font-bold mb-6">Send us a message</h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Name</label>
+                <input type="text" className="w-full px-4 py-2 border border-gray-300 rounded-lg" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Email</label>
+                <input type="email" className="w-full px-4 py-2 border border-gray-300 rounded-lg" />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Message</label>
+                <textarea rows="4" className="w-full px-4 py-2 border border-gray-300 rounded-lg"></textarea>
+              </div>
+              <button className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 transition font-semibold">Send Message</button>
+            </div>
+          </div>
+          <div className="space-y-6">
+            <div className="bg-white rounded-xl shadow-md p-6">
+              <h3 className="font-bold mb-2">Email</h3>
+              <p className="text-gray-600">support@convertbankstatement.com</p>
+            </div>
+            <div className="bg-white rounded-xl shadow-md p-6">
+              <h3 className="font-bold mb-2">Phone</h3>
+              <p className="text-gray-600">+1 (555) 123-4567</p>
+            </div>
+            <div className="bg-white rounded-xl shadow-md p-6">
+              <h3 className="font-bold mb-2">Address</h3>
+              <p className="text-gray-600">123 Finance Street<br />San Francisco, CA 94102</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <Footer />
+    </div>
+  );
+
+  const AboutPage = () => (
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <h1 className="text-4xl font-bold text-gray-900 mb-6 text-center">About Us</h1>
+        <div className="bg-white rounded-xl shadow-md p-8 mb-8">
+          <p className="text-lg text-gray-700 mb-4">
+            ConvertBankStatement was founded with a simple mission: to make financial data more accessible and easier to work with.
+          </p>
+          <p className="text-lg text-gray-700 mb-4">
+            We understand the frustration of manually entering bank statement data into spreadsheets. That's why we built an AI-powered solution that converts your PDF bank statements into clean, editable Excel files in seconds.
+          </p>
+          <p className="text-lg text-gray-700">
+            Our platform serves thousands of users worldwide, from individual freelancers to large enterprises, helping them save time and reduce errors in their financial workflows.
+          </p>
+        </div>
+        <h2 className="text-3xl font-bold text-gray-900 mb-6 text-center">Our Values</h2>
+        <div className="grid md:grid-cols-3 gap-6">
+          <div className="bg-white p-6 rounded-xl shadow-md text-center">
+            <Lock className="h-12 w-12 text-blue-600 mx-auto mb-4" />
+            <h3 className="font-bold text-lg mb-2">Security First</h3>
+            <p className="text-gray-600">Your data privacy is our top priority</p>
+          </div>
+          <div className="bg-white p-6 rounded-xl shadow-md text-center">
+            <Zap className="h-12 w-12 text-blue-600 mx-auto mb-4" />
+            <h3 className="font-bold text-lg mb-2">Speed & Efficiency</h3>
+            <p className="text-gray-600">Fast conversions without compromising quality</p>
+          </div>
+          <div className="bg-white p-6 rounded-xl shadow-md text-center">
+            <CheckCircle className="h-12 w-12 text-blue-600 mx-auto mb-4" />
+            <h3 className="font-bold text-lg mb-2">Accuracy</h3>
+            <p className="text-gray-600">Precise data extraction every time</p>
+          </div>
+        </div>
+      </div>
+      <Footer />
+    </div>
+  );
+
+  const PrivacyPage = () => (
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <h1 className="text-4xl font-bold text-gray-900 mb-6">Privacy Policy</h1>
+        <div className="bg-white rounded-xl shadow-md p-8 space-y-6">
+          <div>
+            <h2 className="text-2xl font-bold mb-3">1. Information We Collect</h2>
+            <p className="text-gray-700">We collect information you provide directly to us, including your name, email address, and payment information. When you upload bank statements, we temporarily process this data to perform the conversion service.</p>
+          </div>
+          <div>
+            <h2 className="text-2xl font-bold mb-3">2. How We Use Your Information</h2>
+            <p className="text-gray-700">We use the information we collect to provide, maintain, and improve our services, process your transactions, and communicate with you about our services.</p>
+          </div>
+          <div>
+            <h2 className="text-2xl font-bold mb-3">3. Data Security</h2>
+            <p className="text-gray-700">We implement robust security measures to protect your data. All uploaded files are encrypted in transit and at rest. Files are automatically deleted from our servers within 24 hours of conversion.</p>
+          </div>
+          <div>
+            <h2 className="text-2xl font-bold mb-3">4. Your Rights</h2>
+            <p className="text-gray-700">You have the right to access, update, or delete your personal information at any time. You can also request a copy of your data or object to certain processing activities.</p>
+          </div>
+          <p className="text-sm text-gray-500 pt-4 border-t">Last updated: October 30, 2025</p>
+        </div>
+      </div>
+      <Footer />
+    </div>
+  );
+
+  const TermsPage = () => (
+    <div className="min-h-screen bg-gray-50">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <h1 className="text-4xl font-bold text-gray-900 mb-6">Terms of Service</h1>
+        <div className="bg-white rounded-xl shadow-md p-8 space-y-6">
+          <div>
+            <h2 className="text-2xl font-bold mb-3">1. Acceptance of Terms</h2>
+            <p className="text-gray-700">By accessing and using ConvertBankStatement, you accept and agree to be bound by the terms and provision of this agreement.</p>
+          </div>
+          <div>
+            <h2 className="text-2xl font-bold mb-3">2. Service Description</h2>
+            <p className="text-gray-700">ConvertBankStatement provides an automated service to convert PDF bank statements to Excel format. We strive for accuracy but do not guarantee 100% error-free conversions.</p>
+          </div>
+          <div>
+            <h2 className="text-2xl font-bold mb-3">3. User Obligations</h2>
+            <p className="text-gray-700">You agree to use the service only for lawful purposes and in accordance with these Terms. You are responsible for maintaining the confidentiality of your account credentials.</p>
+          </div>
+          <div>
+            <h2 className="text-2xl font-bold mb-3">4. Payment Terms</h2>
+            <p className="text-gray-700">Subscription fees are billed in advance on a monthly or yearly basis. Credits are non-refundable but never expire.</p>
+          </div>
+          <p className="text-sm text-gray-500 pt-4 border-t">Last updated: October 30, 2025</p>
+        </div>
+      </div>
+      <Footer />
+    </div>
+  );
+
+  return (
+    <div className="min-h-screen bg-white">
+      <Navigation />
+      {currentPage === 'landing' && <LandingPage />}
+      {currentPage === 'login' && <LoginPage />}
+      {currentPage === 'signup' && <SignupPage />}
+      {currentPage === 'dashboard' && <Dashboard />}
+      {currentPage === 'pricing' && <PricingPage />}
+      {currentPage === 'credits' && <CreditsPage />}
+      {currentPage === 'history' && <HistoryPage />}
+      {currentPage === 'profile' && <ProfilePage />}
+      {currentPage === 'contact' && <ContactPage />}
+      {currentPage === 'about' && <AboutPage />}
+      {currentPage === 'privacy' && <PrivacyPage />}
+      {currentPage === 'terms' && <TermsPage />}
+    </div>
+  );
+};
+
+export default App;
