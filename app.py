@@ -365,10 +365,6 @@ def about():
 def privacy():
     return render_template('privacy.html')
 
-@app.route('/terms')
-def terms():
-    return render_template('terms.html')
-
 # Initialize database
 @app.route('/terms')
 def terms():
