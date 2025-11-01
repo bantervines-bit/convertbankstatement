@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+
+{% block title %}Credits - ConvertBankStatement{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <h1 class="text-3xl font-bold text-gray-900 mb-8">Credits Management</h1>
+
+        <!-- Credit Stats -->
+        <div class="grid md:grid-cols-3 gap-6 mb-8">
+            <div class="bg-gradient-to-br from-blue-600 to-blue-700 text-white p-8 rounded-xl shadow-lg">
+                <p class="text-sm opacity-90 mb-2">Available Credits</p>
+                <p class="text-5xl font-bold mb-4">{{ user.credits }}</p>
+                <a href="{{ url_for('pricing') }}" class="bg-white text-blue-600 px-6 py-2 rounded-lg font-semibold hover:bg-gray-100 transition block text-center">
+                    Buy More Credits
+                </a>
+            </div>
+            <div class="bg-white p-8 rounded-xl shadow-md">
+                <p class="text-gray-600 mb-2">Credits Used</p>
+                <p class="text-4xl font-bold text-gray-900 mb-4">
+                    {{ transactions|selectattr('transaction_type', 'equalto', 'used')|map(attribute='amount')|map('abs')|sum }}
+                </p>
+                <p class="text-sm text-gray-500">From conversions</p>
+            </div>
+            <div class="bg-white p-8 rounded-xl shadow-md">
+                <p class="text-gray-600 mb-2">Credits Earned</p>
+                <p class="text-4xl font-bold text-green-600 mb-4">
+                    {{ transactions|selectattr('transaction_type', 'equalto', 'earned')|map(attribute='amount')|sum }}
+                </p>
+                <p class="text-sm text-gray-500">From referrals & bonuses</p>
+            </div>
+        </div>
+
+        <!-- Referral Section -->
+        <div class="bg-white rounded-xl shadow-md p-8 mb-8">
+            <h2 class="text-2xl font-bold mb-4 flex items-center">
+                <i class="fas fa-gift text-blue-600 mr-2"></i>
+                Earn More Credits
+            </h2>
+            <div class="bg-gradient-to-r from-blue-50 to-purple-50 p-6 rounded-lg mb-6">
+                <h3 class="font-bold text-lg mb-2">Referral Program</h3>
+                <p class="text-gray-700 mb-4">Share your unique referral link and earn 15 free credits for each person who signs up!</p>
+                <div class="flex gap-2">
+                    <input type="text" id="referralLink" value="https://convertbankstatement.com/ref/{{ user.referral_code }}" readonly class="flex-1 px-4 py-2 border border-gray-300 rounded-lg bg-white">
+                    <button onclick="copyReferralLink()" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition flex items-center">
+                        <i class="fas fa-copy mr-2"></i>
+                        <span id="copyText">Copy</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-4">
+                <div class="border-2 border-gray-200 p-4 rounded-lg">
+                    <h4 class="font-semibold mb-2">How Credits Work</h4>
+                    <ul class="space-y-2 text-sm text-gray-600">
+                        <li>• 1 credit = 1 page converted</li>
+                        <li>• Credits never expire</li>
+                        <li>• Get 5 credits daily on login</li>
+                        <li>• Premium users get bonus credits</li>
+                    </ul>
+                </div>
+                <div class="border-2 border-gray-200 p-4 rounded-lg">
+                    <h4 class="font-semibold mb-2">Ways to Earn Free Credits</h4>
+                    <ul class="space-y-2 text-sm text-gray-600">
+                        <li>• Refer friends: +15 credits each</li>
+                        <li>• Daily login bonus: +5 credits</li>
+                        <li>• Signup bonus: +25 credits</li>
+                        <li>• Special promotions</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Transaction History -->
+        <div class="bg-white rounded-xl shadow-md p-8">
+            <h2 class="text-2xl font-bold mb-4">Credit Usage History</h2>
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead>
+                        <tr class="border-b">
+                            <th class="text-left py-3 px-4">Description</th>
+                            <th class="text-left py-3 px-4">Date</th>
+                            <th class="text-right py-3 px-4">Credits</th>
+                            <th class="text-right py-3 px-4">Type</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for transaction in transactions %}
+                        <tr class="border-b hover:bg-gray-50">
+                            <td class="py-3 px-4">{{ transaction.description }}</td>
+                            <td class="py-3 px-4 text-gray-600">{{ transaction.created_at.strftime('%Y-%m-%d') }}</td>
+                            <td class="py-3 px-4 text-right font-semibold {% if transaction.amount > 0 %}text-green-600{% else %}text-red-600{% endif %}">
+                                {% if transaction.amount > 0 %}+{% endif %}{{ transaction.amount }}
+                            </td>
+                            <td class="py-3 px-4 text-right">
+                                <span class="px-3 py-1 rounded-full text-xs font-semibold {% if transaction.transaction_type == 'earned' %}bg-green-100 text-green-700{% else %}bg-blue-100 text-blue-700{% endif %}">
+                                    {{ transaction.transaction_type|title }}
+                                </span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    function copyReferralLink() {
+        const input = document.getElementById('referralLink');
+        input.select();
+        document.execCommand('copy');
+        
+        const copyText = document.getElementById('copyText');
+        copyText.textContent = 'Copied!';
+        
+        setTimeout(() => {
+            copyText.textContent = 'Copy';
+        }, 2000);
+    }
+</script>
+{% endblock %}
