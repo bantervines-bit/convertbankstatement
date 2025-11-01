@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+
+{% block title %}Pricing - ConvertBankStatement{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gradient-to-b from-blue-50 to-white">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <div class="text-center mb-12">
+            <h1 class="text-4xl md:text-5xl font-bold text-gray-900 mb-4">Simple, Transparent Pricing</h1>
+            <p class="text-xl text-gray-600 mb-8">Choose the plan that fits your needs</p>
+        </div>
+
+        <!-- Pricing Cards -->
+        <div class="grid md:grid-cols-4 gap-6 mb-16">
+            <!-- Guest Plan -->
+            <div class="bg-white rounded-xl shadow-lg p-8">
+                <h3 class="text-2xl font-bold mb-2">Guest</h3>
+                <div class="mb-4">
+                    <span class="text-4xl font-bold text-blue-600">Free</span>
+                </div>
+                <p class="text-gray-600 mb-6">Try without signup</p>
+                <ul class="space-y-3 mb-8">
+                    <li class="flex items-start">
+                        <i class="fas fa-check text-green-500 mr-2 mt-1"></i>
+                        <span class="text-gray-700">1 page per month</span>
+                    </li>
+                    <li class="flex items-start">
+                        <i class="fas fa-check text-green-500 mr-2 mt-1"></i>
+                        <span class="text-gray-700">No signup required</span>
+                    </li>
+                </ul>
+                <a href="{{ url_for('guest_convert') }}" class="block w-full py-3 rounded-lg font-semibold transition bg-gray-100 text-gray-900 hover:bg-gray-200 text-center">
+                    Try Now
+                </a>
+            </div>
+
+            <!-- Signed Up Plan -->
+            <div class="bg-white rounded-xl shadow-lg p-8 relative border-2 border-blue-600 transform scale-105">
+                <div class="absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
+                    <span class="bg-blue-600 text-white px-4 py-1 rounded-full text-sm font-semibold">MOST POPULAR</span>
+                </div>
+                <h3 class="text-2xl font-bold mb-2">Signed Up</h3>
+                <div class="mb-4">
+                    <span class="text-4xl font-bold text-blue-600">Free</span>
+                </div>
+                <p class="text-gray-600 mb-6">Best for individuals</p>
+                <ul class="space-y-3 mb-8">
+                    <li class="flex items-start">
+                        <i class="fas fa-check text-green-500 mr-2 mt-1"></i>
+                        <span class="text-gray-700">25 signup credits</span>
+                    </li>
+                    <li class="flex items-start">
+                        <i class="fas fa-check text-green-500 mr-2 mt-1"></i>
+                        <span class="text-gray-700">5 daily bonus credits</span>
+                    </li>
+                    <li class="flex items-start">
+                        <i class="fas fa-check text-green-500 mr-2 mt-1"></i>
+                        <span class="text-gray-700">Referral rewards</span>
+                    </li>
+                </ul>
+                <a href="{{ url_for('signup') }}" class="block w-full py-3 rounded-lg font-semibold transition bg-blue-600 text-white hover:bg-blue-700 text-center">
+                    Sign Up Free
+                </a>
+            </div>
+
+            <!-- Professional Plan -->
+            <div class="bg-white rounded-xl shadow-lg p-8">
+                <h3 class="text-2xl font-bold mb-2">Professional</h3>
+                <div class="mb-4">
+                    <span class="text-4xl font-bold text-blue-600">$29</span>
+                    <span class="text-gray-600">/mo</span>
+                </div>
+                <p class="text-gray-600 mb-6">1100 credits/month</p>
+                <ul class="space-y-3 mb-8">
+                    <li class="flex items-start">
+                        <i class="fas fa-check text-green-500 mr-2 mt-1"></i>
+                        <span class="text-gray-700">1100 credits monthly</span>
+                    </li>
+                    <li class="flex items-start">
+                        <i class="fas fa-check text-green-500 mr-2 mt-1"></i>
+                        <span class="text-gray-700">Priority support</span>
+                    </li>
+                    <li class="flex items-start">
+                        <i class="fas fa-check text-green-500 mr-2 mt-1"></i>
+                        <span class="text-gray-700">All features</span>
+                    </li>
+                </ul>
+                <button class="block w-full py-3 rounded-lg font-semibold transition bg-gray-100 text-gray-900 hover:bg-gray-200 text-center">
+                    Coming Soon
+                </button>
+            </div>
+
+            <!-- Business Plan -->
+            <div class="bg-gradient-to-br from-blue-600 to-blue-700 rounded-xl shadow-lg p-8 text-white">
+                <h3 class="text-2xl font-bold mb-2">Business</h3>
+                <div class="mb-4">
+                    <span class="text-4xl font-bold">$49</span>
+                    <span>/mo</span>
+                </div>
+                <p class="mb-6">4500 credits/month</p>
+                <ul class="space-y-3 mb-8">
+                    <li class="flex items-start">
+                        <i class="fas fa-check mr-2 mt-1"></i>
+                        <span>4500 credits monthly</span>
+                    </li>
+                    <li class="flex items-start">
+                        <i class="fas fa-check mr-2 mt-1"></i>
+                        <span>Dedicated support</span>
+                    </li>
+                    <li class="flex items-start">
+                        <i class="fas fa-check mr-2 mt-1"></i>
+                        <span>API access</span>
+                    </li>
+                </ul>
+                <button class="block w-full py-3 rounded-lg font-semibold transition bg-white text-blue-600 hover:bg-gray-100 text-center">
+                    Coming Soon
+                </button>
+            </div>
+        </div>
+
+        <!-- FAQ Section -->
+        <div class="max-w-3xl mx-auto">
+            <h2 class="text-3xl font-bold text-center mb-8">Frequently Asked Questions</h2>
+            <div class="bg-white rounded-xl shadow-md p-8 space-y-6">
+                <details class="border-b pb-4">
+                    <summary class="font-semibold cursor-pointer text-lg">How do credits work?</summary>
+                    <p class="text-gray-600 mt-2">1 credit = 1 page converted. A 5-page PDF requires 5 credits.</p>
+                </details>
+                <details class="border-b pb-4">
+                    <summary class="font-semibold cursor-pointer text-lg">Do credits expire?</summary>
+                    <p class="text-gray-600 mt-2">No! Credits never expire and roll over each month.</p>
+                </details>
+                <details class="border-b pb-4">
+                    <summary class="font-semibold cursor-pointer text-lg">Can I cancel anytime?</summary>
+                    <p class="text-gray-600 mt-2">Yes, you can cancel your subscription at any time with no penalties.</p>
+                </details>
+                <details class="pb-4">
+                    <summary class="font-semibold cursor-pointer text-lg">What payment methods do you accept?</summary>
+                    <p class="text-gray-600 mt-2">We accept all major credit cards and PayPal.</p>
+                </details>
+            </div>
+        </div>
+
+        <div class="text-center bg-blue-600 text-white rounded-xl p-12 mt-16">
+            <h2 class="text-3xl font-bold mb-4">Still have questions?</h2>
+            <p class="text-xl mb-6">Our team is here to help you choose the right plan</p>
+            <a href="{{ url_for('contact') }}" class="bg-white text-blue-600 px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition inline-block">
+                Contact Sales
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
