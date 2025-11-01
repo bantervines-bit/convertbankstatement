@@ -370,8 +370,11 @@ def terms():
     return render_template('terms.html')
 
 # Initialize database
-@app.before_first_request
-def create_tables():
+@app.route('/terms')
+def terms():
+    return render_template('terms.html')
+
+with app.app_context():
     db.create_all()
 
 if __name__ == '__main__':
