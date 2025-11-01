@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block title %}About Us - ConvertBankStatement{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-50">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <h1 class="text-4xl font-bold text-gray-900 mb-6 text-center">About Us</h1>
+        
+        <div class="bg-white rounded-xl shadow-md p-8 mb-8">
+            <p class="text-lg text-gray-700 mb-4">
+                ConvertBankStatement was founded with a simple mission: to make financial data more accessible and easier to work with.
+            </p>
+            <p class="text-lg text-gray-700 mb-4">
+                We understand the frustration of manually entering bank statement data into spreadsheets. That's why we built an AI-powered solution that converts your PDF bank statements into clean, editable Excel files in seconds.
+            </p>
+            <p class="text-lg text-gray-700">
+                Our platform serves thousands of users worldwide, from individual freelancers to large enterprises, helping them save time and reduce errors in their financial workflows.
+            </p>
+        </div>
+
+        <h2 class="text-3xl font-bold text-gray-900 mb-6 text-center">Our Values</h2>
+        <div class="grid md:grid-cols-3 gap-6 mb-12">
+            <div class="bg-white p-6 rounded-xl shadow-md text-center">
+                <i class="fas fa-lock text-blue-600 text-5xl mb-4"></i>
+                <h3 class="font-bold text-lg mb-2">Security First</h3>
+                <p class="text-gray-600">Your data privacy is our top priority. All files are encrypted and auto-deleted.</p>
+            </div>
+            <div class="bg-white p-6 rounded-xl shadow-md text-center">
+                <i class="fas fa-bolt text-blue-600 text-5xl mb-4"></i>
+                <h3 class="font-bold text-lg mb-2">Speed & Efficiency</h3>
+                <p class="text-gray-600">Fast conversions without compromising quality or accuracy.</p>
+            </div>
+            <div class="bg-white p-6 rounded-xl shadow-md text-center">
+                <i class="fas fa-check-circle text-blue-600 text-5xl mb-4"></i>
+                <h3 class="font-bold text-lg mb-2">Accuracy</h3>
+                <p class="text-gray-600">Precise data extraction every time with our advanced AI.</p>
+            </div>
+        </div>
+
+        <div class="bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl p-8 text-center">
+            <h2 class="text-3xl font-bold mb-4">Join Thousands of Happy Users</h2>
+            <p class="text-xl mb-6">Start converting your bank statements today</p>
+            <a href="{{ url_for('signup') }}" class="bg-white text-blue-600 px-8 py-3 rounded-lg hover:bg-gray-100 transition inline-block font-semibold">
+                Get Started Free
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
