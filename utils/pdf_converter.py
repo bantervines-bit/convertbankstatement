@@ -13,195 +13,230 @@ def count_pdf_pages(pdf_path):
         print(f"Error counting pages: {str(e)}")
         return 0
 
-def extract_all_text_structured(pdf_path):
-    """Extract all text from PDF in a structured way"""
-    all_data = []
+def extract_sbi_format(page):
+    """Extract SBI bank statement format"""
+    try:
+        # SBI uses clear table structure
+        tables = page.extract_tables()
+        
+        for table in tables:
+            if table and len(table) > 1:
+                # Check if this is the transaction table
+                header = table[0] if table else []
+                header_text = ' '.join([str(cell).lower() for cell in header if cell])
+                
+                # Look for transaction table keywords
+                if any(kw in header_text for kw in ['txn date', 'description', 'debit', 'credit', 'balance']):
+                    cleaned_table = []
+                    for row in table:
+                        if row and any(cell and str(cell).strip() for cell in row):
+                            cleaned_row = [str(cell).strip() if cell else '' for cell in row]
+                            # Skip empty rows
+                            if any(cleaned_row):
+                                cleaned_table.append(cleaned_row)
+                    
+                    return cleaned_table
+    except Exception as e:
+        print(f"SBI extraction error: {str(e)}")
+    
+    return None
+
+def extract_phonepe_format(page):
+    """Extract PhonePe/UPI statement format"""
+    try:
+        text = page.extract_text()
+        if not text:
+            return None
+        
+        lines = text.split('\n')
+        transactions = []
+        
+        # PhonePe format detection
+        if 'Transaction Statement' in text or 'phonepe' in text.lower():
+            i = 0
+            while i < len(lines):
+                line = lines[i].strip()
+                
+                # Date pattern: "Sep 07, 2024" or "Aug 31, 2024"
+                date_match = re.match(r'([A-Z][a-z]{2}\s+\d{1,2},\s+\d{4})', line)
+                
+                if date_match:
+                    date = date_match.group(1)
+                    time = ''
+                    description = ''
+                    transaction_type = ''
+                    amount = ''
+                    transaction_id = ''
+                    utr_no = ''
+                    
+                    # Next line might be time
+                    if i + 1 < len(lines):
+                        time_line = lines[i + 1].strip()
+                        if re.match(r'\d{2}:\d{2}\s+(am|pm)', time_line):
+                            time = time_line
+                            i += 1
+                    
+                    # Next lines contain transaction details
+                    while i + 1 < len(lines):
+                        i += 1
+                        detail_line = lines[i].strip()
+                        
+                        # Check for next date (end of this transaction)
+                        if re.match(r'([A-Z][a-z]{2}\s+\d{1,2},\s+\d{4})', detail_line):
+                            i -= 1  # Go back one line
+                            break
+                        
+                        # Description (Paid to, Received from)
+                        if detail_line.startswith(('Paid to', 'Received from')):
+                            description = detail_line
+                        
+                        # Transaction ID
+                        elif detail_line.startswith('Transaction ID'):
+                            transaction_id = detail_line.replace('Transaction ID', '').strip()
+                        
+                        # UTR Number
+                        elif detail_line.startswith('UTR No'):
+                            utr_no = detail_line.replace('UTR No', '').replace('.', '').strip()
+                        
+                        # Type (DEBIT/CREDIT) and Amount
+                        elif 'DEBIT' in detail_line or 'CREDIT' in detail_line:
+                            parts = detail_line.split()
+                            for part in parts:
+                                if part in ['DEBIT', 'CREDIT']:
+                                    transaction_type = part
+                                elif part.startswith('₹'):
+                                    amount = part.replace('₹', '').replace(',', '')
+                        
+                        # Check if we hit a separator or page info
+                        if 'Page' in detail_line or detail_line.startswith('This is a system'):
+                            break
+                    
+                    # Add transaction if we have minimum data
+                    if date and description:
+                        transactions.append([
+                            date,
+                            time,
+                            description,
+                            transaction_id,
+                            utr_no,
+                            transaction_type,
+                            amount
+                        ])
+                
+                i += 1
+            
+            if transactions:
+                # Add header
+                header = ['Date', 'Time', 'Transaction Details', 'Transaction ID', 'UTR No', 'Type', 'Amount']
+                return [header] + transactions
+    
+    except Exception as e:
+        print(f"PhonePe extraction error: {str(e)}")
+    
+    return None
+
+def extract_generic_table(page):
+    """Generic table extraction for unknown formats"""
+    try:
+        tables = page.extract_tables()
+        
+        for table in tables:
+            if table and len(table) > 2:  # At least header + 2 rows
+                cleaned_table = []
+                for row in table:
+                    if row:
+                        cleaned_row = [str(cell).strip() if cell else '' for cell in row]
+                        if any(cleaned_row):
+                            cleaned_table.append(cleaned_row)
+                
+                if len(cleaned_table) > 2:
+                    return cleaned_table
+    
+    except Exception as e:
+        print(f"Generic extraction error: {str(e)}")
+    
+    return None
+
+def extract_data_from_pdf(pdf_path):
+    """Main extraction with format detection"""
+    all_tables = []
     
     try:
         with pdfplumber.open(pdf_path) as pdf:
             for page_num, page in enumerate(pdf.pages, start=1):
-                # Method 1: Try table extraction
-                tables = page.extract_tables()
+                extracted_table = None
                 
-                if tables:
-                    for table in tables:
-                        if table and len(table) > 1:
-                            cleaned_table = []
-                            for row in table:
-                                if row and any(cell and str(cell).strip() for cell in row):
-                                    cleaned_row = [str(cell).strip() if cell else '' for cell in row]
-                                    cleaned_table.append(cleaned_row)
-                            
-                            if len(cleaned_table) > 1:
-                                all_data.append({
-                                    'page': page_num,
-                                    'data': cleaned_table,
-                                    'method': 'table'
-                                })
+                # Try different extraction methods
+                # 1. Try SBI format
+                extracted_table = extract_sbi_format(page)
                 
-                # Method 2: Extract text with layout
-                text = page.extract_text()
-                if text:
-                    lines = [line.strip() for line in text.split('\n') if line.strip()]
-                    if lines:
-                        all_data.append({
-                            'page': page_num,
-                            'data': lines,
-                            'method': 'text'
-                        })
+                # 2. Try PhonePe format
+                if not extracted_table:
+                    extracted_table = extract_phonepe_format(page)
+                
+                # 3. Try generic table extraction
+                if not extracted_table:
+                    extracted_table = extract_generic_table(page)
+                
+                if extracted_table:
+                    all_tables.append({
+                        'page': page_num,
+                        'data': extracted_table
+                    })
     
     except Exception as e:
-        print(f"Error extracting data: {str(e)}")
+        print(f"PDF extraction error: {str(e)}")
     
-    return all_data
+    return all_tables
 
-def is_transaction_line(line):
-    """Check if a line looks like a transaction"""
-    # Date patterns
-    date_patterns = [
-        r'\d{1,2}[-/]\d{1,2}[-/]\d{2,4}',  # 01/01/2024, 1-1-24
-        r'\d{1,2}\s+[A-Za-z]{3}\s+\d{2,4}',  # 01 Jan 2024
-    ]
-    
-    # Amount pattern
-    amount_pattern = r'[\d,]+\.\d{2}'
-    
-    has_date = any(re.search(pattern, line) for pattern in date_patterns)
-    has_amount = re.search(amount_pattern, line) is not None
-    
-    return has_date or has_amount
-
-def split_transaction_line(line):
-    """Split a transaction line into columns intelligently"""
-    # Date patterns
-    date_pattern = r'(\d{1,2}[-/]\d{1,2}[-/]\d{2,4}|\d{1,2}\s+[A-Za-z]{3}\s+\d{2,4})'
-    # Amount pattern (with optional comma separator)
-    amount_pattern = r'([\d,]+\.\d{2})'
-    
-    parts = []
-    
-    # Find all dates
-    date_matches = list(re.finditer(date_pattern, line))
-    # Find all amounts
-    amount_matches = list(re.finditer(amount_pattern, line))
-    
-    if date_matches or amount_matches:
-        # Collect all match positions
-        all_matches = []
-        for match in date_matches:
-            all_matches.append((match.start(), match.end(), match.group()))
-        for match in amount_matches:
-            all_matches.append((match.start(), match.end(), match.group()))
-        
-        # Sort by position
-        all_matches.sort(key=lambda x: x[0])
-        
-        # Extract parts
-        last_end = 0
-        for start, end, value in all_matches:
-            # Get text before this match
-            if start > last_end:
-                text_before = line[last_end:start].strip()
-                if text_before:
-                    parts.append(text_before)
-            
-            # Add the matched value
-            parts.append(value)
-            last_end = end
-        
-        # Get remaining text
-        if last_end < len(line):
-            remaining = line[last_end:].strip()
-            if remaining:
-                parts.append(remaining)
-    else:
-        # Fallback: split by multiple spaces or tabs
-        parts = re.split(r'\s{2,}|\t+', line)
-        parts = [p.strip() for p in parts if p.strip()]
-    
-    return parts if parts else [line]
-
-def process_text_lines_to_table(lines):
-    """Convert text lines to table format"""
-    table_data = []
-    
-    # Find where transactions start (skip header info)
-    header_keywords = ['date', 'description', 'particulars', 'debit', 'credit', 
-                       'balance', 'transaction', 'amount', 'withdrawal', 'deposit']
-    
-    start_idx = 0
-    for i, line in enumerate(lines):
-        line_lower = line.lower()
-        # Count keywords in line
-        keyword_count = sum(1 for kw in header_keywords if kw in line_lower)
-        if keyword_count >= 2:
-            # This is likely the header row
-            start_idx = i
-            break
-    
-    # Process lines starting from header
-    for line in lines[start_idx:]:
-        if is_transaction_line(line):
-            parts = split_transaction_line(line)
-            if len(parts) >= 2:  # At least 2 columns
-                table_data.append(parts)
-    
-    return table_data
-
-def normalize_table_columns(table_data):
-    """Make all rows have the same number of columns"""
+def normalize_table(table_data):
+    """Ensure all rows have same number of columns"""
     if not table_data:
         return []
     
-    # Find max column count
     max_cols = max(len(row) for row in table_data)
     
-    # Pad rows to match max columns
     normalized = []
     for row in table_data:
         if len(row) < max_cols:
             row = row + [''] * (max_cols - len(row))
-        normalized.append(row[:max_cols])  # Trim if too long
+        normalized.append(row[:max_cols])
     
     return normalized
 
-def create_excel_from_data(data, output_path):
-    """Create Excel from extracted data"""
+def create_excel_from_tables(tables, output_path):
+    """Create formatted Excel file"""
     try:
         wb = Workbook()
         ws = wb.active
-        ws.title = "Bank Statement"
+        ws.title = "Transactions"
         
         # Styles
         header_fill = PatternFill(start_color="4472C4", end_color="4472C4", fill_type="solid")
         header_font = Font(color="FFFFFF", bold=True, size=11)
         normal_font = Font(size=10)
         border = Border(
-            left=Side(style='thin', color='000000'),
-            right=Side(style='thin', color='000000'),
-            top=Side(style='thin', color='000000'),
-            bottom=Side(style='thin', color='000000')
+            left=Side(style='thin'),
+            right=Side(style='thin'),
+            top=Side(style='thin'),
+            bottom=Side(style='thin')
         )
         
         current_row = 1
         
-        for item in data:
-            if item['method'] == 'table':
-                table_data = normalize_table_columns(item['data'])
-            else:  # text method
-                table_data = process_text_lines_to_table(item['data'])
-                table_data = normalize_table_columns(table_data)
+        for table_info in tables:
+            table_data = normalize_table(table_info['data'])
             
             if not table_data:
                 continue
             
-            # Write table data
+            # Write data
             for row_idx, row_data in enumerate(table_data):
                 for col_idx, cell_value in enumerate(row_data, start=1):
                     cell = ws.cell(row=current_row, column=col_idx, value=cell_value)
                     cell.border = border
                     
-                    # First row is header
+                    # First row of each page is header
                     if row_idx == 0:
                         cell.fill = header_fill
                         cell.font = header_font
@@ -212,7 +247,7 @@ def create_excel_from_data(data, output_path):
                 
                 current_row += 1
             
-            # Add blank row between pages
+            # Add space between pages
             current_row += 1
         
         # Auto-adjust column widths
@@ -223,54 +258,41 @@ def create_excel_from_data(data, output_path):
             for cell in column:
                 try:
                     if cell.value:
-                        lines = str(cell.value).split('\n')
-                        for line in lines:
-                            max_length = max(max_length, len(line))
+                        cell_length = len(str(cell.value))
+                        max_length = max(max_length, cell_length)
                 except:
                     pass
             
-            # Set width (min 10, max 60)
-            adjusted_width = min(max(max_length + 2, 10), 60)
+            adjusted_width = min(max(max_length + 2, 12), 60)
             ws.column_dimensions[column_letter].width = adjusted_width
         
         wb.save(output_path)
         return True
     
     except Exception as e:
-        print(f"Error creating Excel: {str(e)}")
+        print(f"Excel creation error: {str(e)}")
         return False
 
 def convert_pdf_to_excel(pdf_path, output_path):
     """Main conversion function"""
     try:
-        # Count pages
         pages = count_pdf_pages(pdf_path)
         if pages == 0:
             return False, 0, "Could not read PDF file"
         
-        # Extract all data
-        extracted_data = extract_all_text_structured(pdf_path)
+        tables = extract_data_from_pdf(pdf_path)
         
-        if not extracted_data:
-            return False, pages, "Could not extract any data from PDF"
+        if not tables:
+            return False, pages, "No transaction data found in PDF"
         
-        # Create Excel
-        success = create_excel_from_data(extracted_data, output_path)
+        success = create_excel_from_tables(tables, output_path)
         
         if success:
-            # Count total rows
-            total_rows = 0
-            for item in extracted_data:
-                if item['method'] == 'table':
-                    total_rows += len(item['data'])
-                else:
-                    table_data = process_text_lines_to_table(item['data'])
-                    total_rows += len(table_data)
-            
-            return True, pages, f"Successfully converted {pages} page(s) with {total_rows} row(s)"
+            total_rows = sum(len(table['data']) - 1 for table in tables)  # Exclude headers
+            return True, pages, f"Converted {pages} page(s) with {total_rows} transaction(s)"
         else:
             return False, pages, "Error creating Excel file"
     
     except Exception as e:
         print(f"Conversion error: {str(e)}")
-        return False, 0, f"Conversion error: {str(e)}"
+        return False, 0, f"Error: {str(e)}"
